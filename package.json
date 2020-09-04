@@ -1,0 +1,44 @@
+{
+  "name": "automated",
+  "version": "0.1.0",
+  "bin": {
+    "automated": "bin/automated.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "lint": "npx eslint . --ext .ts --fix"
+  },
+  "devDependencies": {
+    "@aws-cdk/assert": "1.62.0",
+    "@types/jest": "^26.0.13",
+    "@types/node": "14.6.4",
+    "@typescript-eslint/eslint-plugin": "^4.0.1",
+    "@typescript-eslint/parser": "^4.0.1",
+    "aws-cdk": "1.62.0",
+    "eslint": "^7.8.1",
+    "jest": "^26.4.2",
+    "ts-jest": "^26.3.0",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.2"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-autoscaling": "^1.62.0",
+    "@aws-cdk/aws-backup": "^1.62.0",
+    "@aws-cdk/aws-directoryservice": "^1.62.0",
+    "@aws-cdk/aws-ec2": "^1.62.0",
+    "@aws-cdk/aws-elasticloadbalancingv2": "^1.62.0",
+    "@aws-cdk/aws-events-targets": "^1.62.0",
+    "@aws-cdk/aws-iam": "^1.62.0",
+    "@aws-cdk/aws-imagebuilder": "^1.62.0",
+    "@aws-cdk/aws-route53": "^1.62.0",
+    "@aws-cdk/aws-route53-targets": "^1.62.0",
+    "@aws-cdk/aws-secretsmanager": "^1.62.0",
+    "@aws-cdk/aws-servicediscovery": "^1.62.0",
+    "@aws-cdk/core": "1.62.0",
+    "@aws-cdk/region-info": "^1.62.0",
+    "source-map-support": "^0.5.19"
+  }
+}
