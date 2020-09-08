@@ -1,10 +1,10 @@
-import * as cdk from "@aws-cdk/core"
+import * as cdk from "@aws-cdk/core";
 import { ServicePrincipal } from "@aws-cdk/aws-iam";
 import { createSSMPolicy } from "../utils";
-import * as ec2 from "@aws-cdk/aws-ec2"
-import * as iam from "@aws-cdk/aws-iam"
-import * as autoscaling from "@aws-cdk/aws-autoscaling"
-import * as s3 from "@aws-cdk/aws-s3"
+import * as ec2 from "@aws-cdk/aws-ec2";
+import * as iam from "@aws-cdk/aws-iam";
+import * as autoscaling from "@aws-cdk/aws-autoscaling";
+import * as s3 from "@aws-cdk/aws-s3";
 
 export class JenkinsPatternProps {
   readonly vpc: ec2.IVpc;
