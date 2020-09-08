@@ -74,14 +74,18 @@ Select it, and "Launch instance from template" from "Actions ▼".
 
 Launch with these settings:
 
-- "Source template version": choose latest one
+- "Source template version": choose the latest one
 - "Instance type": can be changed, if you would like to use another one
-- "Key Pair": if you need to log in as Administrator, you have to specify this. If you do not have one, create and specify it
+- "Key Pair": if you need to log in as Administrator, you have to specify this
+- "Network settings": choose one subnet which is named as "PublicSubnet*"
 - "Storage": can be changed, if you will run out of the disk space
 - "Advanced details"
     - "User data": can be changed, if you would like to setup when 
 
 Launch an instance, wait for minutes, and log into the instance with RDP.
+You can login as `buildnode` with a password in AWS Secrets Manager (named as `buildnodeimageBuildNodeUser...`).
+This user has administrative privileges.
+
 Setup as you like, and then, launch `EC2Launch` in Windows and click "Shutdown with Sysprep".
 Go back to EC2 Console, select the instance, click "Actions ▼" -> "Image" -> "Create image".
 Type your wonderful "Image name", then click "Create Image".

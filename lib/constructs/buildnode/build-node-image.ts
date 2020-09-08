@@ -18,22 +18,18 @@ export class BuildNodeImagePattern extends cdk.Construct {
   constructor(scope: cdk.Construct, id: string, props: BuildNodeImageProps) {
     super(scope, id);
 
-    // generate a random password for logging into Build Image Instance
-    const randPassword = Array(16)
-      .fill("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
-      .map((x) => x[Math.floor(Math.random() * x.length)])
-      .join("");
-
-    const secret = new secretsmanager.Secret(this, "BuildNodeImageSecret");
-    const cfnSecret = secret.node.defaultChild as secretsmanager.CfnSecret;
-    cfnSecret.generateSecretString = undefined;
-    cfnSecret.secretString = randPassword;
+    const buildNodeUserSecret = new secretsmanager.Secret(this, "BuildNodeUserSecret", {
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({ username: "buildnode" }),
+        generateStringKey: "password",
+        excludePunctuation: true,
+      },
+    });
 
     const userData = ec2.UserData.custom(
       this.userDataForBuildMachineImage(
         props.logBucket,
-        "buildnode",
-        randPassword
+        buildNodeUserSecret
       )
     );
 
@@ -43,6 +39,7 @@ export class BuildNodeImagePattern extends cdk.Construct {
     role.attachInlinePolicy(createSSMPolicy(this, props.ssmLoggingBucket));
     props.logBucket.grantPut(role);
     props.resourcesBucket.grantRead(role);
+    buildNodeUserSecret.grantRead(role);
 
     const mySecurityGroup = new ec2.SecurityGroup(this, "EC2AccessFromRDP", {
       vpc: props.vpc,
@@ -109,25 +106,28 @@ export class BuildNodeImagePattern extends cdk.Construct {
         `;
   }
 
-  createUser(userName: string, password: string): string {
+  createUser(userSecret: secretsmanager.ISecret): string {
     return `
-        $Password = ConvertTo-SecureString ${password} -AsPlainText -Force
-        New-LocalUser ${userName} -Password $Password -FullName "full_user_name" -Description "Description of the account"
-        Add-LocalGroupMember -Group "Administrators" -Member ${userName}
+        $secrets = ((Get-SECSecretValue -SecretId '${userSecret.secretArn}').SecretString | ConvertFrom-Json)
+        $userName = $secrets.username
+        $password = $secrets.password
+
+        $Password = ConvertTo-SecureString $password -AsPlainText -Force
+        New-LocalUser $userName -Password $Password -FullName "full_user_name" -Description "Description of the account"
+        Add-LocalGroupMember -Group "Administrators" -Member $userName
         `;
   }
 
   userDataForBuildMachineImage(
     bucket: s3.IBucket,
-    userName: string,
-    password: string
+    userSecret: secretsmanager.ISecret
   ): string {
     return `
         <powershell>
         $ErrorActionPreference = "Stop"
 
         try {
-          ${this.createUser(userName, password)}
+          ${this.createUser(userSecret)}
           ${setupFirefoxPowershell()}
           ${this.install7zip()}
 
