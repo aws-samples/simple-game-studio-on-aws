@@ -1,7 +1,7 @@
-import * as cdk from "@aws-cdk/core"
-import * as ec2 from "@aws-cdk/aws-ec2"
-import * as iam from "@aws-cdk/aws-iam"
-import * as s3 from "@aws-cdk/aws-s3"
+import * as cdk from "@aws-cdk/core";
+import * as ec2 from "@aws-cdk/aws-ec2";
+import * as iam from "@aws-cdk/aws-iam";
+import * as s3 from "@aws-cdk/aws-s3";
 import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
 import { createSSMPolicy, setupFirefoxPowershell } from "../../utils";
 
@@ -18,19 +18,20 @@ export class BuildNodeImagePattern extends cdk.Construct {
   constructor(scope: cdk.Construct, id: string, props: BuildNodeImageProps) {
     super(scope, id);
 
-    const buildNodeUserSecret = new secretsmanager.Secret(this, "BuildNodeUserSecret", {
-      generateSecretString: {
-        secretStringTemplate: JSON.stringify({ username: "buildnode" }),
-        generateStringKey: "password",
-        excludePunctuation: true,
-      },
-    });
+    const buildNodeUserSecret = new secretsmanager.Secret(
+      this,
+      "BuildNodeUserSecret",
+      {
+        generateSecretString: {
+          secretStringTemplate: JSON.stringify({ username: "buildnode" }),
+          generateStringKey: "password",
+          excludePunctuation: true,
+        },
+      }
+    );
 
     const userData = ec2.UserData.custom(
-      this.userDataForBuildMachineImage(
-        props.logBucket,
-        buildNodeUserSecret
-      )
+      this.userDataForBuildMachineImage(props.logBucket, buildNodeUserSecret)
     );
 
     const role = new iam.Role(this, "BuildMachine", {

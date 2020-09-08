@@ -1,8 +1,8 @@
-import * as cdk from "@aws-cdk/core"
-import * as iam from "@aws-cdk/aws-iam"
+import * as cdk from "@aws-cdk/core";
+import * as iam from "@aws-cdk/aws-iam";
 import { ServicePrincipal } from "@aws-cdk/aws-iam";
-import * as backup from "@aws-cdk/aws-backup"
-import * as kms from "@aws-cdk/aws-kms"
+import * as backup from "@aws-cdk/aws-backup";
+import * as kms from "@aws-cdk/aws-kms";
 
 export class BackupPattern extends cdk.Construct {
   readonly BackupTagKey: string = "aws-backup";

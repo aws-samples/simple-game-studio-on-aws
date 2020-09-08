@@ -1,6 +1,6 @@
-import * as cdk from "@aws-cdk/core"
-import * as s3 from "@aws-cdk/aws-s3"
-import * as ec2 from "@aws-cdk/aws-ec2"
+import * as cdk from "@aws-cdk/core";
+import * as s3 from "@aws-cdk/aws-s3";
+import * as ec2 from "@aws-cdk/aws-ec2";
 import * as route53 from "@aws-cdk/aws-route53";
 import { JenkinsPattern } from "../constructs/jenkins";
 
