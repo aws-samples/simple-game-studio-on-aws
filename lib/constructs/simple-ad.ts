@@ -1,5 +1,5 @@
-import * as cdk from "@aws-cdk/core"
-import * as ec2 from "@aws-cdk/aws-ec2"
+import * as cdk from "@aws-cdk/core";
+import * as ec2 from "@aws-cdk/aws-ec2";
 import * as directoryService from "@aws-cdk/aws-directoryservice";
 import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
 

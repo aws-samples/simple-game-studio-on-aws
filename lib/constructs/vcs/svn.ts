@@ -1,13 +1,13 @@
-import * as cdk from "@aws-cdk/core"
+import * as cdk from "@aws-cdk/core";
 import { Peer } from "@aws-cdk/aws-ec2";
 import { ServicePrincipal } from "@aws-cdk/aws-iam";
 import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
 import { createSSMPolicy } from "../../utils";
 import { BackupPattern } from "../backup";
-import * as ec2 from "@aws-cdk/aws-ec2"
-import * as iam from "@aws-cdk/aws-iam"
-import * as autoscaling from "@aws-cdk/aws-autoscaling"
-import * as s3 from "@aws-cdk/aws-s3"
+import * as ec2 from "@aws-cdk/aws-ec2";
+import * as iam from "@aws-cdk/aws-iam";
+import * as autoscaling from "@aws-cdk/aws-autoscaling";
+import * as s3 from "@aws-cdk/aws-s3";
 
 export class SVNPatternProps {
   readonly vpc: ec2.IVpc;
