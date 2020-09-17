@@ -3,7 +3,7 @@
 set -eux
 
 # should be a region: e.g. 'ap-northeast-1'
-export AWS_DEFAULT_REGION=$1
+export AWS_DEFAULT_REGION=${REGION}
 
 cat <<'EOF' > /tmp/run.py
 import boto3
@@ -56,8 +56,8 @@ def run_instance(params: RunInstanceParam):
                         'Value': 'BuildNode'
                     },
                     {
-                        'Key': 'ForJenkinsBuildNode',
-                        'Value': 'dummy'
+                        'Key': 'Purpose',
+                        'Value': 'buildnode'
                     },
                     {
                         'Key': 'jenkins_host',
@@ -123,13 +123,13 @@ $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";"
 
 Update-Last-Active-Tag
 
-$url = "http://$($jenkinsHost):8080/jnlpJars/agent.jar"
+$url = "http://$($jenkinsHost)/jnlpJars/agent.jar"
 $output = "C:\\agent.jar"
 (New-Object System.Net.WebClient).DownloadFile($url, $output)
 
 Update-Last-Active-Tag
 
-java -jar C:\\agent.jar -jnlpUrl http://"$jenkinsHost":8080/computer/"$jenkinsAgentName"/slave-agent.jnlp -secret "$jenkinsSecret" -workDir C:\jenkins
+java -jar C:\\agent.jar -jnlpUrl http://"$jenkinsHost"/computer/"$jenkinsAgentName"/slave-agent.jnlp -secret "$jenkinsSecret" -workDir C:\jenkins
 
 </powershell>
 <persist>true</persist>

@@ -172,7 +172,7 @@ These are pre-build stacks for demonstration.
     - Access with SSM Start-sesison, and get a secret from `/var/lib/jenkins/secrets/initialAdminPassword`. Then, access the endpoint and setup your jenkins.
         - fix JNLP Agent port to `50000`
         - check "Configure Global Security" -> "CSRF Protection" -> "Enable proxy compatibility"
-        - Jenkins URL: `http://<Your_Private_IP_of_Jenkins_server>:8080/` for JNLP agent connectivity
+        - Jenkins URL: `http://jenkins.gamestudio.aws.internal/` for JNLP agent connectivity
     - Backup: manually create a Jenkins job to call `/usr/local/jenkins-backup.sh`. This script compress JENKINS_HOME and upload it to a S3 bucket which is created in `SetupStack`.
 - BuildNodeImageStack
     - Creates an EC2 Instance for a template of build nodes
@@ -214,7 +214,7 @@ A common error to prevent deletion is `X has dependencies`.
 If you see this kind of message, read error messages and delete resources manually before running `destroy` command again.
 You can also delete stacks in AWS Cloudformation console.
 
-Even after destroying, S3 buckets and keys are not deleted (`status: DELETE_SKIPPED` in CloudFormation console) to prevent backups deleted.
+Even after destroying, S3 buckets, keys, some EBSs are not deleted (`status: DELETE_SKIPPED` in CloudFormation console) to prevent backups deleted.
 You can manually delete it if you are just trying this repository.
 Using AWS CLI is a good idea to delete multiple buckets.
 (e.g. `$ aws s3 ls | cut -d" " -f 3 | grep  '^setupstack-*' | xargs -I{} aws s3 rb s3://{}`. appending `--force` will delete all the contents in found buckets. Be careful!)

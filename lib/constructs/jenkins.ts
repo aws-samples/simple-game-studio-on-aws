@@ -29,18 +29,12 @@ export class JenkinsPattern extends cdk.Construct {
       jenkinsSecurityGroup.addIngressRule(p, ec2.Port.tcp(443));
     });
     // for build nodes
-    jenkinsSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
-      ec2.Port.tcp(80)
-    );
-    jenkinsSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
-      ec2.Port.tcp(443)
-    );
-    jenkinsSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
-      ec2.Port.tcp(50000)
-    );
+    [80, 443, 50000].forEach((port) => {
+      jenkinsSecurityGroup.addIngressRule(
+        ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
+        ec2.Port.tcp(port)
+      );
+    });
 
     const jenkinsRole = new iam.Role(this, "jenkins-role", {
       assumedBy: new ServicePrincipal("ec2.amazonaws.com"),
@@ -48,7 +42,65 @@ export class JenkinsPattern extends cdk.Construct {
     jenkinsRole.attachInlinePolicy(
       createSSMPolicy(this, props.ssmLoggingBucket)
     );
-    props.backupBucket.grantPut(jenkinsRole);
+    props.backupBucket.grantReadWrite(jenkinsRole);
+    // to launch instance from Jenkins
+    jenkinsRole.attachInlinePolicy(
+      new iam.Policy(scope, "jenkins-ec2-policy", {
+        statements: [
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            resources: ["*"],
+            actions: [
+              "iam:ListInstanceProfilesForRole",
+              "iam:PassRole",
+            ],
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            resources: ["*"],
+            actions: [
+              "ec2:DescribeSpotInstanceRequests",
+              "ec2:CancelSpotInstanceRequests",
+              "ec2:GetConsoleOutput",
+              "ec2:DescribeInstances",
+              "ec2:DescribeKeyPairs",
+              "ec2:DescribeRegions",
+              "ec2:DescribeImages",
+              "ec2:DescribeAvailabilityZones",
+              "ec2:DescribeSecurityGroups",
+              "ec2:DescribeSubnets",
+              "ec2:GetPasswordData",
+            ],
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            resources: ["*"],
+            actions: [
+              "ec2:RequestSpotInstances",
+              "ec2:RunInstances",
+              "ec2:CreateTags",
+              "ec2:DeleteTags",
+            ],
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            resources: ["*"],
+            actions: [
+              "ec2:StartInstances",
+              "ec2:StopInstances",
+              "ec2:TerminateInstances",
+            ],
+            conditions:
+            {
+              "StringEquals": {
+                "ec2:Vpc": `arn:aws:ec2:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:vpc/${props.vpc.vpcId}`,
+                "ec2:ResourceTag/Purpose": "BuildNode"
+              }
+            }
+          }),
+        ],
+      })
+    );
 
     /* eslint-disable no-useless-escape */
     const userData = ec2.UserData.custom(`
