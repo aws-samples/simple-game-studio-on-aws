@@ -14,10 +14,14 @@ const setup = new SetupStack(app, "SetupStack", {});
 
 const internalNetwork: ec2.IPeer[] = [];
 if (process.env.ALLOW_CIDR) {
-  internalNetwork.push(ec2.Peer.ipv4(process.env.ALLOW_CIDR));
+  process.env.ALLOW_CIDR.split(',').forEach((cidr) => {
+    internalNetwork.push(ec2.Peer.ipv4(cidr));
+  })
 }
 if (process.env.ALLOW_PREFIX_LIST) {
-  internalNetwork.push(ec2.Peer.prefixList(process.env.ALLOW_PREFIX_LIST));
+  process.env.ALLOW_PREFIX_LIST.split(',').forEach((pl) => {
+    internalNetwork.push(ec2.Peer.prefixList(pl));
+  })
 }
 
 new VCSStack(app, "VCSStack", {
