@@ -51,8 +51,8 @@ export class BuildNodeImagePattern extends cdk.Construct {
       mySecurityGroup.addIngressRule(p, ec2.Port.tcp(3389), "allow RDP access");
     });
 
-    new ec2.CfnLaunchTemplate(this, "build-machine-image-template", {
-      launchTemplateName: "build-machine-image-template",
+    new ec2.CfnLaunchTemplate(this, "build-node-image-template", {
+      launchTemplateName: "build-node-image-template",
       launchTemplateData: {
         instanceType: props.instanceType.toString(),
         imageId: ec2.MachineImage.latestWindows(
@@ -60,7 +60,7 @@ export class BuildNodeImagePattern extends cdk.Construct {
         ).getImage(this).imageId,
         userData: cdk.Fn.base64(userData.render()),
         iamInstanceProfile: {
-          arn: new iam.CfnInstanceProfile(this, "WorkstationInstanceProfile", {
+          arn: new iam.CfnInstanceProfile(this, "BuildNodeInstanceProfile", {
             path: "/",
             roles: [role.roleName],
           }).attrArn,
@@ -78,6 +78,17 @@ export class BuildNodeImagePattern extends cdk.Construct {
         placement: {
           tenancy: "dedicated",
         },
+        tagSpecifications: [
+          {
+            resourceType: "instance",
+            tags: [
+              {
+                key: "Name",
+                value: "Build Node Image",
+              },
+            ],
+          },
+        ],
       },
     });
   }
@@ -131,6 +142,7 @@ export class BuildNodeImagePattern extends cdk.Construct {
           ${this.createUser(userSecret)}
           ${setupFirefoxPowershell()}
           ${this.install7zip()}
+          ${this.installAmazonCorretto11()}
 
           New-Item -Path "C:\\init-complete.txt" -ItemType File
         } catch [Exception] {

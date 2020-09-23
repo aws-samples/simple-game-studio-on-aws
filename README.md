@@ -93,6 +93,19 @@ Type your wonderful "Image name", then click "Create Image".
 After few minutes... Wow! You got an AMI for your build nodes!
 You can see your AMI in "AMIs" menu.
 
+### (Example) UE4 Setup on Build Nodes
+
+1. RDP into your instance
+1. Download UE4 source (from Github, internal repository, or upload to S3 and download it)
+1. Place UE4 files into `C:\UE4`
+1. Setup build environments
+1. Execute `C:\UE4\Setup.bat` and `C:\UE4\GenerateProjectFiles.bat`
+1. Build the Engine (e.g. `call C:\UE4\Engine\Build\BatchFiles\Rebuild.bat -Target="ShaderCompileWorker Win64 Development" -Target="UE4Editor Win64 Development" -WaitMutex -FromMsBuild`)
+1. Run `sysprep`, and make your build image (refer: https://aws.amazon.com/jp/premiumsupport/knowledge-center/sysprep-create-install-ec2-windows-amis/)
+
+Tips: Refer `docs/setup-ue4.ps1` for automation.
+Steps are 1) Place UE4 source to your resource bucket, 2) modify variables at the top of the script, 3) and run it.
+
 ### Launch Build Nodes
 
 1. Open Jenkins
@@ -109,15 +122,6 @@ You have to connect Jenkins instance from a build node.
 Of course, you can automate it.
 Please see the sample script: `./docs/run-instance.sh`.
 
-### (Example) UE4 Setup on Build Nodes
-
-1. RDP into your instance
-1. Download UE4 source (from Github, internal repository, or upload to S3 and download it)
-1. Place UE4 files into `C:\UE4`
-1. Setup build environments
-1. Execute `C:\UE4\Setup.bat` and `C:\UE4\GenerateProjectFiles.bat`
-1. Build the Engine (e.g. `call C:\UE4\Engine\Build\BatchFiles\Rebuild.bat -Target="ShaderCompileWorker Win64 Development" -Target="UE4Editor Win64 Development" -WaitMutex -FromMsBuild`)
-1. Run `sysprep`, and make your build image (refer: https://aws.amazon.com/jp/premiumsupport/knowledge-center/sysprep-create-install-ec2-windows-amis/)
 
 ### Jenkins Jobs
 
@@ -128,6 +132,7 @@ If you have completed Jenkins setup, you can freely create your own Jenkins jobs
 - Launch Build Instance Automatically
     - Create a parameterized job (powered by [Parameterized Trigger](https://plugins.jenkins.io/parameterized-trigger/)) with "Build Script" (`./docs/run-instance.sh`).
         - Create parameters (written as environment variables in the script)
+    - Tips: refer `./docs/build-ue4.ps1` for detail
 
 ### SimpleAD
 
