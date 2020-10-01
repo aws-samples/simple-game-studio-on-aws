@@ -39,6 +39,22 @@ export class WorkstationStack extends cdk.Stack {
         ],
       })
     );
+    workstationRole.attachInlinePolicy(
+      new iam.Policy(this, "for-gpu-policy", {
+        statements: [
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            resources: [
+              "arn:aws:s3:::nvidia-gaming/*",
+              "arn:aws:s3:::nvidia-gaming",
+              "arn:aws:s3:::ec2-windows-nvidia-drivers/*",
+              "arn:aws:s3:::ec2-windows-nvidia-drivers",
+            ],
+            actions: ["s3:Get*", "s3:List*"],
+          }),
+        ],
+      })
+    );
 
     const workstationSG = new ec2.SecurityGroup(this, "WorkstationSG", {
       vpc: props.vpc,
@@ -57,6 +73,7 @@ export class WorkstationStack extends cdk.Stack {
         <powershell>
         ${setupFirefoxPowershell()}
         ${this.setupNiceDCV("Administrator")}
+        ${this.downloadGPUDriver()}
         </powershell>
         `);
 
@@ -84,6 +101,17 @@ export class WorkstationStack extends cdk.Stack {
           },
         ],
         securityGroupIds: [workstationSG.securityGroupId],
+        tagSpecifications: [
+          {
+            resourceType: "instance",
+            tags: [
+              {
+                key: "Name",
+                value: "NICE DCV",
+              },
+            ],
+          },
+        ],
       },
     });
   }
@@ -95,5 +123,45 @@ export class WorkstationStack extends cdk.Stack {
         $wc.Downloadfile($ff_url, "nice.msi")
         Start-Process -Wait -FilePath msiexec.exe -ArgumentList /i, nice.msi, /passive, /norestart, /l*v, nice_install_msi.log, ADDLOCAL=ALL, AUTOMATIC_SESSION_OWNER=${owner_name}
         `;
+  }
+  
+  downloadGPUDriver(): string {
+    return `
+    $KeyPrefix = "g4/latest"
+    $Bucket = "ec2-windows-nvidia-drivers"
+    $LocalPath = "$home\\Desktop\\NVIDIA"
+    $Objects = Get-S3Object -BucketName $Bucket -KeyPrefix $KeyPrefix -Region us-east-1
+    foreach ($Object in $Objects) {
+        $LocalFileName = $Object.Key
+        if ($LocalFileName -ne '' -and $Object.Size -ne 0) {
+            $LocalFilePath = Join-Path $LocalPath $LocalFileName
+            Copy-S3Object -BucketName $Bucket -Key $Object.Key -LocalFile $LocalFilePath -Region us-east-1
+        }
+    }
+
+    $Bucket = "ec2-windows-nvidia-drivers"
+    $KeyPrefix = "latest"
+    $LocalPath = "$home\\Desktop\\NVIDIA"
+    $Objects = Get-S3Object -BucketName $Bucket -KeyPrefix $KeyPrefix -Region us-east-1
+    foreach ($Object in $Objects) {
+        $LocalFileName = $Object.Key
+        if ($LocalFileName -ne '' -and $Object.Size -ne 0) {
+            $LocalFilePath = Join-Path $LocalPath $LocalFileName
+            Copy-S3Object -BucketName $Bucket -Key $Object.Key -LocalFile $LocalFilePath -Region us-east-1
+        }
+    }
+
+    $Bucket = "nvidia-gaming"
+    $KeyPrefix = "windows/latest"
+    $LocalPath = "$home\\Desktop\\NVIDIA"
+    $Objects = Get-S3Object -BucketName $Bucket -KeyPrefix $KeyPrefix -Region us-east-1
+    foreach ($Object in $Objects) {
+        $LocalFileName = $Object.Key
+        if ($LocalFileName -ne '' -and $Object.Size -ne 0) {
+            $LocalFilePath = Join-Path $LocalPath $LocalFileName
+            Copy-S3Object -BucketName $Bucket -Key $Object.Key -LocalFile $LocalFilePath -Region us-east-1
+        }
+    }    
+    `;
   }
 }
