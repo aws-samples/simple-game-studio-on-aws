@@ -131,11 +131,11 @@ export class JenkinsPattern extends cdk.Construct {
 #!/usr/bin/env bash
 set -eux
 
-BACKUP_FILE="/tmp/jenkins-\\\$(date +"%Y-%m-%d-%H-%M-%S").tar"
+BACKUP_FILE="/tmp/jenkins-\\\$(date +"%Y-%m-%d-%H-%M-%S").tar.gz"
 
 # to avoid tar warning (file changed)
 set +e
-tar -cvf \\\${BACKUP_FILE} -C $JENKINS_HOME .
+tar -zcvf \\\${BACKUP_FILE} -C $JENKINS_HOME .
 code=\\\$?
 if [ \\\$code -ne 0 -a \\\$code -ne 1 ]; then
     echo "Fatal Error"
