@@ -202,6 +202,22 @@ Listed cases are very limited, so feel free to add your own cases!
 - Change userdata in CDK and deploy it. How to debug it?
 - Remove some of stacks. How to deploy it again?
 
+### Restore Jenkins
+
+If you enabled Jenkins backup job, it is easy to restore Jenkins from the backup.
+
+1. SSH (or start-session) into a new Jenkins instance
+1. find the latest backup in S3 bucket (e.g. `$ aws s3 ls setupstack-jenkinsbackupbucketxxxxxxxxxx/jenkins-backup/`)
+
+after that,
+
+```bash
+$ aws s3 cp s3://<YOUR_LATEST_BACKUP>.tar.gz .
+$ sudo tar xvf <YOUR_TAR_FILE>.tar.gz -C /var/lib/jenkins/
+$ sudo chown -R jenkins:jenkins /var/lib/jenkins/
+$ sudo systemctl restart jenkins
+```
+
 ### Update all the CDK dependencies
 
 ```bash
