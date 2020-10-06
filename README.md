@@ -130,9 +130,10 @@ If you have completed Jenkins setup, you can freely create your own Jenkins jobs
 
 - Backup
     - In this CDK script, `/usr/local/backup-jenkins.sh` has been created in the Jenkins instance. This script take JENKINS_HOME snapshot as a zip file and put it on a S3 bucket. You can create a Jenkins job which runs every 6 hours to make full backup periodically. Notice that you should delete unused backups to avoid unnecessary charges. [Amazon S3 Glacier](https://aws.amazon.com/glacier/) will help to keep full backups.
-- Launch Build Instance Automatically
+- Launch Build Instance via a Jenkins job
     - Create a parameterized job (powered by [Parameterized Trigger](https://plugins.jenkins.io/parameterized-trigger/)) with "Build Script" (`./docs/run-instance.sh`).
         - Create parameters (written as environment variables in the script)
+        - Some of the parameters are written in `/usr/local/env-vars-for-launching-buildnode.sh`
     - Tips: refer `./docs/build-ue4.ps1` for detail
 
 ### SimpleAD

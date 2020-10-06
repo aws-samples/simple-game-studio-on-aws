@@ -1,10 +1,8 @@
 $ErrorActionPreference = "Stop"
 
-# build against {VCSROOT}\TestProj.uproject
 $PWD = Get-Location
-$ProjectName = "TestProj"
-$ProjectFile = "$PWD\$ProjectName.uproject" # change this into your project file path
-$ArtifactBucket = "<your-backet-for-artifact>" # change this into your bucket name for build artifacts
+$ProjectFile = "$PWD\$Env:ProjectName.uproject" # change this into your project file path
+$ArtifactBucket = $Env:BuildArtifactBucketName # change this into your bucket name for build artifacts
 $ArchiveDir = "C:\archive"
 
 # if you need
@@ -30,4 +28,7 @@ $ts = Get-Date -UFormat %s -Millisecond 0
 $filePath = "testgame-{0}.zip" -f $ts
 
 Move-Item -Path C:\archive.zip -Destination C:\"$filePath"
+echo "$filePath"
 Write-S3Object -BucketName $ArtifactBucket -File C:\"$filePath" -key package/"$filePath"
+
+echo "Write to $ArtifactBucket/package/$filePath"

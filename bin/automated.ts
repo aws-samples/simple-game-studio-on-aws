@@ -14,14 +14,14 @@ const setup = new SetupStack(app, "SetupStack", {});
 
 const internalNetwork: ec2.IPeer[] = [];
 if (process.env.ALLOW_CIDR) {
-  process.env.ALLOW_CIDR.split(',').forEach((cidr) => {
+  process.env.ALLOW_CIDR.split(",").forEach((cidr) => {
     internalNetwork.push(ec2.Peer.ipv4(cidr));
-  })
+  });
 }
 if (process.env.ALLOW_PREFIX_LIST) {
-  process.env.ALLOW_PREFIX_LIST.split(',').forEach((pl) => {
+  process.env.ALLOW_PREFIX_LIST.split(",").forEach((pl) => {
     internalNetwork.push(ec2.Peer.prefixList(pl));
-  })
+  });
 }
 
 new VCSStack(app, "VCSStack", {
@@ -33,22 +33,24 @@ new VCSStack(app, "VCSStack", {
   ssmLogBucket: setup.ssmLoggingBucket,
 });
 
-const jenkins = new CICDStack(app, "CICDStack", {
+const bn = new BuildNodeImageStack(app, "BuildNodeImageStack", {
+  vpc: setup.vpc,
+  loggingBucket: setup.gameDevOnAWSLoggingBucket,
+  resourceBucket: setup.gameDevOnAWSResourcesBucket,
+  allowAccessFrom: internalNetwork,
+  ssmLogBucket: setup.ssmLoggingBucket,
+});
+
+new CICDStack(app, "CICDStack", {
   vpc: setup.vpc,
   zone: setup.zone,
   recordName: "jenkins",
   backupBucket: setup.jenkinsBackupBucket,
   allowAccessFrom: internalNetwork,
   ssmLogBucket: setup.ssmLoggingBucket,
-});
-
-new BuildNodeImageStack(app, "BuildNodeImageStack", {
-  vpc: setup.vpc,
-  loggingBucket: setup.gameDevOnAWSLoggingBucket,
   resourceBucket: setup.gameDevOnAWSResourcesBucket,
-  allowAccessFrom: internalNetwork,
-  ssmLogBucket: setup.ssmLoggingBucket,
-  jenkinsInstance: jenkins.jenkinsInstance,
+  buildNodeInstanceProfile: bn.buildNodeInstanceProfile,
+  buildNodeSecurityGroup: bn.buildNodeSecurityGroup,
 });
 
 new WorkstationStack(app, "WorkStationStack", {

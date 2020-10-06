@@ -1,8 +1,8 @@
 import * as cdk from "@aws-cdk/core";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as ec2 from "@aws-cdk/aws-ec2";
-import { BuildNodeImagePattern } from "../constructs/buildnode/build-node-image";
 import * as iam from "@aws-cdk/aws-iam";
+import { BuildNodeImagePattern } from "../constructs/buildnode/build-node-image";
 import { createSSMPolicy } from "../utils";
 
 interface BuildNodeImageStackProps extends cdk.StackProps {
@@ -12,11 +12,12 @@ interface BuildNodeImageStackProps extends cdk.StackProps {
   resourceBucket: s3.IBucket;
   allowAccessFrom: ec2.IPeer[];
   ssmLogBucket: s3.IBucket;
-
-  jenkinsInstance: ec2.IInstance;
 }
 
 export class BuildNodeImageStack extends cdk.Stack {
+  readonly buildNodeInstanceProfile: iam.CfnInstanceProfile;
+  readonly buildNodeSecurityGroup: ec2.ISecurityGroup;
+
   constructor(
     scope: cdk.Construct,
     id: string,
@@ -62,6 +63,14 @@ export class BuildNodeImageStack extends cdk.Stack {
         ],
       })
     );
+    this.buildNodeInstanceProfile = new iam.CfnInstanceProfile(
+      this,
+      "BuildInstanceProfile",
+      {
+        path: "/",
+        roles: [buildInstanceRole.roleName],
+      }
+    );
 
     const buildInstanceSG = new ec2.SecurityGroup(this, "BuildInstanceSG", {
       vpc: props.vpc,
@@ -76,20 +85,6 @@ export class BuildNodeImageStack extends cdk.Stack {
       ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
       ec2.Port.tcp(50000)
     );
-
-    new cdk.CfnOutput(this, "BuildNode_SubnetID", {
-      value: props.vpc.privateSubnets.map((e) => e.subnetId).join(", "),
-      description: "BuildNode_SubnetID",
-    });
-    new cdk.CfnOutput(this, "BuildNode_InstanceProfileARN", {
-      value: new iam.CfnInstanceProfile(this, "BuildInstanceProfile", {
-        roles: [buildInstanceRole.roleName],
-      }).attrArn,
-      description: "",
-    });
-    new cdk.CfnOutput(this, "BuildNode_SecurityGroup", {
-      value: buildInstanceSG.securityGroupId,
-      description: "",
-    });
+    this.buildNodeSecurityGroup = buildInstanceSG;
   }
 }
