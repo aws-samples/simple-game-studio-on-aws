@@ -59,14 +59,5 @@ export class SetupStack extends cdk.Stack {
     });
 
     this.awsBackup = new BackupPattern(this, "AWSBackup");
-
-    new cdk.CfnOutput(this, "jenkinsBackupBucketName", {
-      value: this.jenkinsBackupBucket.bucketName,
-      description: "Jenkins backup backet name",
-    });
-    new cdk.CfnOutput(this, "GameDevOnAWSBucketName", {
-      value: this.gameDevOnAWSResourcesBucket.bucketName,
-      description: "Game Dev on AWS resources backet name",
-    });
   }
 }

@@ -55,6 +55,7 @@ export class WorkstationStack extends cdk.Stack {
         ],
       })
     );
+    props.resourceBucket.grantRead(workstationRole);
 
     const workstationSG = new ec2.SecurityGroup(this, "WorkstationSG", {
       vpc: props.vpc,
@@ -124,7 +125,7 @@ export class WorkstationStack extends cdk.Stack {
         Start-Process -Wait -FilePath msiexec.exe -ArgumentList /i, nice.msi, /passive, /norestart, /l*v, nice_install_msi.log, ADDLOCAL=ALL, AUTOMATIC_SESSION_OWNER=${owner_name}
         `;
   }
-  
+
   downloadGPUDriver(): string {
     return `
     $KeyPrefix = "g4/latest"

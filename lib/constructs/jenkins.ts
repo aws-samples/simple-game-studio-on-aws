@@ -12,6 +12,10 @@ export class JenkinsPatternProps {
 
   readonly backupBucket: s3.IBucket;
   readonly ssmLoggingBucket: s3.IBucket;
+  readonly artifactBucket: s3.IBucket;
+
+  readonly buildNodeInstanceProfile: iam.CfnInstanceProfile;
+  readonly buildNodeSecurityGroup: ec2.ISecurityGroup;
 }
 
 export class JenkinsPattern extends cdk.Construct {
@@ -43,6 +47,7 @@ export class JenkinsPattern extends cdk.Construct {
       createSSMPolicy(this, props.ssmLoggingBucket)
     );
     props.backupBucket.grantReadWrite(jenkinsRole);
+
     // to launch instance from Jenkins
     jenkinsRole.attachInlinePolicy(
       new iam.Policy(scope, "jenkins-ec2-policy", {
@@ -50,10 +55,7 @@ export class JenkinsPattern extends cdk.Construct {
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             resources: ["*"],
-            actions: [
-              "iam:ListInstanceProfilesForRole",
-              "iam:PassRole",
-            ],
+            actions: ["iam:ListInstanceProfilesForRole", "iam:PassRole"],
           }),
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -90,13 +92,14 @@ export class JenkinsPattern extends cdk.Construct {
               "ec2:StopInstances",
               "ec2:TerminateInstances",
             ],
-            conditions:
-            {
-              "StringEquals": {
-                "ec2:Vpc": `arn:aws:ec2:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:vpc/${props.vpc.vpcId}`,
-                "ec2:ResourceTag/Purpose": "BuildNode"
-              }
-            }
+            conditions: {
+              StringEquals: {
+                "ec2:Vpc": `arn:aws:ec2:${cdk.Stack.of(this).region}:${
+                  cdk.Stack.of(this).account
+                }:vpc/${props.vpc.vpcId}`,
+                "ec2:ResourceTag/Purpose": "BuildNode",
+              },
+            },
           }),
         ],
       })
@@ -112,8 +115,6 @@ export class JenkinsPattern extends cdk.Construct {
             sudo yum install -y python3 java-11-amazon-corretto-headless
             sudo pip3 install boto3
             
-            # sudo yum install -y java-1.8.0-openjdk-devel.x86_64
-            # sudo alternatives --install /usr/bin/java java /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/java 20000
             sudo alternatives --install /usr/bin/java java /usr/lib/jvm/java-11-amazon-corretto.x86_64/bin/java 20000
             sudo update-alternatives --auto java
 
@@ -143,11 +144,25 @@ if [ \\\$code -ne 0 -a \\\$code -ne 1 ]; then
 fi
 set -e
 
-aws s3 cp \\\${BACKUP_FILE} s3://${props.backupBucket.bucketName}/jenkins-backup/
+aws s3 cp \\\${BACKUP_FILE} s3://${
+      props.backupBucket.bucketName
+    }/jenkins-backup/
 rm -rf \\\${BACKUP_FILE}
 EOF
             sudo chmod 755 /usr/local/backup-jenkins.sh
             sudo chown jenkins:jenkins /usr/local/backup-jenkins.sh
+
+            # environment settings for easy launching
+            cat << EOF | sudo tee /usr/local/env-vars-for-launching-buildnode.sh
+#!/usr/bin/env bash
+export BN_SUBNET_ID=${props.vpc.publicSubnets[0].subnetId}
+export BN_INSTANCE_PROFILE_ARN=${props.buildNodeInstanceProfile.attrArn}
+export BN_SG_ID=${props.buildNodeSecurityGroup.securityGroupId}
+export BN_REGION=${cdk.Stack.of(this).region}
+export BUILD_ARTIFACT_BUCKET=${props.artifactBucket.bucketName}
+EOF
+            sudo chmod 755 /usr/local/env-vars-for-launching-buildnode.sh
+            sudo chown jenkins:jenkins /usr/local/env-vars-for-launching-buildnode.sh
 
             # to listen on 80 port
             sudo sed -ie 's/^JENKINS_PORT="8080"$/JENKINS_PORT="80"/' /etc/sysconfig/jenkins
