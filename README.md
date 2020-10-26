@@ -198,7 +198,7 @@ It is amazingly important to be ready for disaster in order not to break your st
 Let's try these cases before you run this CDK in production.
 Listed cases are very limited, so feel free to add your own cases!
 
-- Shutdown Jenkins master server. How to restore the settings?
+- Shutdown Jenkins controller server. How to restore the settings?
 - Shutdown a workstation. How to restore the data?
 - Change userdata in CDK and deploy it. How to debug it?
 - Remove some of stacks. How to deploy it again?

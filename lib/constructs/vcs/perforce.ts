@@ -20,7 +20,7 @@ export class P4PatternProps {
 }
 
 export class P4Pattern extends cdk.Construct {
-  masterInstance: ec2.IInstance;
+  primaryInstance: ec2.IInstance;
 
   constructor(scope: cdk.Construct, id: string, props: P4PatternProps) {
     super(scope, id);
@@ -56,7 +56,7 @@ export class P4Pattern extends cdk.Construct {
       generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
     });
 
-    const p4MasterInstance = new ec2.Instance(this, "p4-master-instance", {
+    const p4PrimaryInstance = new ec2.Instance(this, "p4-primary-instance", {
       vpc: props.vpc,
       vpcSubnets: { subnetType: props.subnetType },
       securityGroup: p4SecurityGroup,
@@ -110,18 +110,18 @@ export class P4Pattern extends cdk.Construct {
       ],
     });
 
-    cdk.Tags.of(p4MasterInstance).add(
+    cdk.Tags.of(p4PrimaryInstance).add(
       props.backup.BackupTagKey,
       props.backup.BackupTagValue
     );
-    cdk.Tags.of(p4MasterInstance).add("Name", "PerforceMaster");
+    cdk.Tags.of(p4PrimaryInstance).add("Name", "PerforcePrimary");
 
-    this.masterInstance = p4MasterInstance;
+    this.primaryInstance = p4PrimaryInstance;
   }
 
   createUserData(): string {
     return fs.readFileSync(
-      path.join(__dirname, "perforce-master-userdata.sh"),
+      path.join(__dirname, "perforce-primary-userdata.sh"),
       "utf8"
     );
   }

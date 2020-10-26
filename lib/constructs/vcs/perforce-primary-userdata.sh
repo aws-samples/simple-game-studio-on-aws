@@ -2,7 +2,7 @@
 
 set -eux
 
-ServerID="p4master"
+ServerID="p4primary"
 
 yum -y update
 
@@ -90,7 +90,7 @@ echo ${ServerID} > /p4/1/root/server.id
 
 cat <<EOF > /tmp/p4user
 User: p4admin
-Email: p4admin@p4master
+Email: p4admin@p4primary
 FullName: p4admin
 EOF
 P4PORT=localhost:1666 p4 user -f -i < /tmp/p4user

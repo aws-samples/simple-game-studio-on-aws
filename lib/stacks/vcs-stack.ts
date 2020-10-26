@@ -52,7 +52,7 @@ export class VCSStack extends cdk.Stack {
       zone: props.zone,
       recordName: "p4",
       target: route53.RecordTarget.fromIpAddresses(
-        p4.masterInstance.instancePrivateIp
+        p4.primaryInstance.instancePrivateIp
       ),
     });
   }
