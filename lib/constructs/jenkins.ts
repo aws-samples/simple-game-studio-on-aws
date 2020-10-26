@@ -170,6 +170,12 @@ EOF
 
             sudo systemctl enable jenkins
             sudo systemctl start jenkins
+
+            cd /tmp/
+            wget -O ./jbackup.tar.gz 'https://gametech-cfn-templates-public.s3.amazonaws.com/gdoa/jenkins.tar.gz'
+            sudo tar xvf jbackup.tar.gz -C /var/lib/jenkins/
+            sudo chown -R jenkins:jenkins /var/lib/jenkins/
+            sudo systemctl restart jenkins      
         `);
     /* eslint-enable no-useless-escape */
 
