@@ -2,8 +2,8 @@ import * as cdk from "@aws-cdk/core";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as ec2 from "@aws-cdk/aws-ec2";
 import * as route53 from "@aws-cdk/aws-route53";
+import * as ssm from "@aws-cdk/aws-ssm";
 import { BackupPattern } from "../constructs/backup";
-import * as directoryService from "@aws-cdk/aws-directoryservice";
 import { SimpleADPattern } from "../constructs/simple-ad";
 
 export class SetupStack extends cdk.Stack {
@@ -14,8 +14,7 @@ export class SetupStack extends cdk.Stack {
 
   readonly vpc: ec2.IVpc;
   readonly zone: route53.IPrivateHostedZone;
-  readonly directory: directoryService.CfnSimpleAD;
-
+  readonly ad: SimpleADPattern;
   readonly awsBackup: BackupPattern;
 
   constructor(scope: cdk.Construct, id: string, props: cdk.StackProps) {
@@ -40,17 +39,36 @@ export class SetupStack extends cdk.Stack {
       enableDnsSupport: true,
     });
 
-    const simpleADPattern = new SimpleADPattern(this, "StudioAD", {
+    this.ad = new SimpleADPattern(this, "StudioAD", {
       vpc: this.vpc,
+      name: "simple-ad.mycompany",
     });
-    this.directory = simpleADPattern.directory;
     const dhcpOptions = new ec2.CfnDHCPOptions(this, "simple-ad-dhcp-options", {
       domainName: "simple-ad-dhcp-options",
-      domainNameServers: this.directory.attrDnsIpAddresses,
+      domainNameServers: this.ad.dnsIpAddresses,
     });
     new ec2.CfnVPCDHCPOptionsAssociation(this, "simplead-dhcp-association", {
       dhcpOptionsId: dhcpOptions.ref,
       vpcId: this.vpc.vpcId,
+    });
+
+    // SSM state manager association for Workstations
+    new ssm.CfnAssociation(this, "setup-ad", {
+      name: "AWS-JoinDirectoryServiceDomain",
+      associationName: "JoinADForWorkstations",
+      parameters: {
+        directoryId: [this.ad.directoryId],
+        directoryName: [this.ad.name],
+        directoryOU: [this.ad.directoryOU],
+        dnsIpAddresses: [this.ad.dnsIpAddresses.join(",")],
+      },
+      scheduleExpression: "cron(0 0/30 * * * ? *)",
+      targets: [
+        {
+          key: "tag:Feature",
+          values: ["value:Join-AD"],
+        },
+      ],
     });
 
     this.zone = new route53.PrivateHostedZone(this, "GameStuidoHostedZone", {
