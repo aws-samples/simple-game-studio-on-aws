@@ -12,67 +12,49 @@ export class BackupPattern extends cdk.Construct {
     super(scope, id);
 
     // create service role by myself
-    const backupRole = new iam.Role(scope, "backup-role", {
+    const backupRole = new iam.Role(scope, "game-studio-backup-role", {
       assumedBy: new ServicePrincipal("backup.amazonaws.com"),
     });
-    const EBSBackupPolicy = new iam.Policy(scope, "EBSBackupPolicy", {
-      statements: [
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          resources: ["*"],
-          actions: [
-            "ssmmessages:CreateControlChannel",
-            "ssmmessages:CreateDataChannel",
-            "ssmmessages:OpenControlChannel",
-            "ssmmessages:OpenDataChannel",
-            "ssm:UpdateInstanceInformation",
-          ],
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          resources: ["arn:aws:ec2:*::snapshot/*", "arn:aws:ec2:*:*:volume/*"],
-          actions: ["ec2:CreateSnapshot", "ec2:DeleteSnapshot"],
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          resources: ["*"],
-          actions: ["ec2:DescribeVolumes", "ec2:DescribeSnapshots"],
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          resources: ["*"],
-          actions: ["tag:GetResources"],
-        }),
-      ],
-    });
-    backupRole.attachInlinePolicy(EBSBackupPolicy);
+
+    backupRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("AWSBackupOperatorAccess")
+    );
+    backupRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName(
+        "service-role/AWSBackupServiceRolePolicyForBackup"
+      )
+    );
 
     const valutKey = new kms.Key(scope, "ValutDefaultKey", {
       enableKeyRotation: true,
       alias: "backup/default",
     });
-    const valut = new backup.CfnBackupVault(scope, "backup-vault", {
-      backupVaultName: "backup-vault",
+    const valut = new backup.CfnBackupVault(scope, "game-studio-backup-vault", {
+      backupVaultName: "game-studio-backup-vault",
       encryptionKeyArn: valutKey.keyArn,
     });
-    const backupPlan = new backup.CfnBackupPlan(scope, "ebs-backup", {
-      backupPlan: {
-        backupPlanName: "ebs-backup",
-        backupPlanRule: [
-          {
-            ruleName: "daily-10days-retention",
-            targetBackupVault: valut.backupVaultName,
-            scheduleExpression: "cron(0 12 * * ? *)",
-            lifecycle: {
-              deleteAfterDays: 10,
+    const backupPlan = new backup.CfnBackupPlan(
+      scope,
+      "game-studio-ebs-backup",
+      {
+        backupPlan: {
+          backupPlanName: "game-studio-ebs-backup",
+          backupPlanRule: [
+            {
+              ruleName: "daily-10days-retention",
+              targetBackupVault: valut.backupVaultName,
+              scheduleExpression: "cron(0 12 * * ? *)",
+              lifecycle: {
+                deleteAfterDays: 10,
+              },
             },
-          },
-        ],
-      },
-    });
+          ],
+        },
+      }
+    );
     backupPlan.addDependsOn(valut);
 
-    new backup.CfnBackupSelection(scope, "ebs-backup-selection", {
+    new backup.CfnBackupSelection(scope, "game-studio-ebs-backup-selection", {
       backupSelection: {
         iamRoleArn: backupRole.roleArn,
         selectionName: "ebs-by-tag",

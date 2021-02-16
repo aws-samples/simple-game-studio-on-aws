@@ -64,4 +64,5 @@ new WorkstationStack(app, "WorkStationStack", {
     ec2.InstanceClass.G4DN,
     ec2.InstanceSize.XLARGE
   ),
+  activeDirectory: setup.ad,
 });
