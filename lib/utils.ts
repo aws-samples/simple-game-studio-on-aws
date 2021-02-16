@@ -53,8 +53,4 @@ $ff_url = "https://download.mozilla.org/?product=firefox-msi-latest-ssl&os=win64
 $wc = New-Object net.webclient
 $wc.Downloadfile($ff_url, "firefox.msi")
 Start-Process -Wait -FilePath msiexec.exe -ArgumentList /i, firefox.msi, /passive, /norestart, /l*v, firefox_install_msi.log
-
-$url = "https://download.mozilla.org/?product=firefox-msi-latest-ssl&os=win64&lang=en-US"
-$output = "firefox.msi"
-(New-Object System.Net.WebClient).DownloadFile($url, $output)
 `;
