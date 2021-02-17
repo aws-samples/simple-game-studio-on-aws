@@ -2,7 +2,6 @@ import * as cdk from "@aws-cdk/core";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as ec2 from "@aws-cdk/aws-ec2";
 import * as iam from "@aws-cdk/aws-iam";
-import { BuildNodeImagePattern } from "../constructs/buildnode/build-node-image";
 import { createSSMPolicy } from "../utils";
 
 interface BuildNodeImageStackProps extends cdk.StackProps {
@@ -24,19 +23,6 @@ export class BuildNodeImageStack extends cdk.Stack {
     props: BuildNodeImageStackProps
   ) {
     super(scope, id, props);
-
-    new BuildNodeImagePattern(this, "buildnode-image", {
-      vpc: props.vpc,
-      instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.C5,
-        ec2.InstanceSize.XLARGE4
-      ),
-
-      allowAccessFrom: props.allowAccessFrom,
-      logBucket: props.loggingBucket,
-      ssmLoggingBucket: props.ssmLogBucket,
-      resourcesBucket: props.resourceBucket,
-    });
 
     // for launching from Jenkins
     const buildInstanceRole = new iam.Role(this, "BuildInstanceRole", {
