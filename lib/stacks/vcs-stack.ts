@@ -13,6 +13,7 @@ interface VCSStackProps extends cdk.StackProps {
   backup: BackupPattern;
   allowAccessFrom: ec2.IPeer[];
   ssmLogBucket: s3.IBucket;
+  isSVN: boolean;
 }
 
 export class VCSStack extends cdk.Stack {
@@ -21,22 +22,25 @@ export class VCSStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props: VCSStackProps) {
     super(scope, id, props);
 
-    const svn = new SVNPattern(this, "svn", {
-      vpc: props.vpc,
-      backup: props.backup,
+    if (props.isSVN) {
+      // SVN
+      const svn = new SVNPattern(this, "svn", {
+        vpc: props.vpc,
+        backup: props.backup,
 
-      allowAccessFrom: props.allowAccessFrom,
-      subnetType: ec2.SubnetType.PUBLIC,
-      ssmLogBucket: props.ssmLogBucket,
-    });
+        allowAccessFrom: props.allowAccessFrom,
+        subnetType: ec2.SubnetType.PUBLIC,
+        ssmLogBucket: props.ssmLogBucket,
+      });
 
-    new route53.ARecord(this, "vcs-ip", {
-      zone: props.zone,
-      recordName: props.recordName,
-      target: route53.RecordTarget.fromIpAddresses(
-        svn.instance.instancePrivateIp
-      ),
-    });
+      new route53.ARecord(this, "vcs-ip", {
+        zone: props.zone,
+        recordName: props.recordName,
+        target: route53.RecordTarget.fromIpAddresses(
+          svn.instance.instancePrivateIp
+        ),
+      });
+    }
 
     // Perforce
     const p4 = new P4Pattern(this, "p4", {
