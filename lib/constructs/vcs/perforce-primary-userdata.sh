@@ -35,9 +35,11 @@ chmod 700 /home/p4admin/.ssh
 chmod 600 /home/p4admin/.ssh/authorized_keys
 echo 'p4admin         ALL=(ALL)       NOPASSWD: ALL' >> /etc/sudoers
 
-wget 'https://swarm.workshop.perforce.com/projects/perforce-software-sdp/download/downloads/sdp.Unix.tgz' -O /tmp/sdp.Unix.tgz
+SDP_URL="https://swarm.workshop.perforce.com/archives/guest/perforce_software/sdp/downloads/sdp.Unix.2019.3.26571.tgz.zip?v=%231"
+wget ${SDP_URL} -O /tmp/sdp.Unix.zip
 cd /tmp/
-tar -xvf /tmp/sdp.Unix.tgz
+unzip /tmp/sdp.Unix.zip
+tar -xvf /tmp/sdp.Unix.2019.3.26571.tgz
 mv /tmp/sdp /hxdepots/sdp
 
 cp /hxdepots/sdp/Server/Unix/setup/mkdirs.cfg /hxdepots/sdp/Server/Unix/setup/mkdirs.cfg.bak
