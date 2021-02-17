@@ -188,7 +188,7 @@ EOF
     });
     const ebsSetting = {
       volumeSize: 30,
-      volumeType: autoscaling.EbsDeviceVolumeType.GP2,
+      volumeType: autoscaling.EbsDeviceVolumeType.GP3,
     };
 
     this.instance = new ec2.Instance(this, "jenkins-instance", {

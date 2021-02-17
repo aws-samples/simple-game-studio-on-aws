@@ -108,7 +108,7 @@ export class WorkstationPattern extends cdk.Construct {
             deviceName: "/dev/sda1",
             ebs: {
               volumeSize: 500,
-              volumeType: ec2.EbsDeviceVolumeType.GP2,
+              volumeType: ec2.EbsDeviceVolumeType.GP3,
             },
           },
         ],

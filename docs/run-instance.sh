@@ -36,7 +36,7 @@ def run_instance(params: RunInstanceParam):
                 'Ebs': {
                     'DeleteOnTermination': True,
                     'VolumeSize': 500,
-                    'VolumeType': 'gp2',
+                    'VolumeType': 'gp3',
                 },
             },
         ],

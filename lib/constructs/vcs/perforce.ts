@@ -70,7 +70,7 @@ export class P4Pattern extends cdk.Construct {
           volume: {
             ebsDevice: {
               volumeSize: 8,
-              volumeType: autoscaling.EbsDeviceVolumeType.GP2,
+              volumeType: autoscaling.EbsDeviceVolumeType.GP3,
             },
           },
         },
@@ -91,7 +91,7 @@ export class P4Pattern extends cdk.Construct {
           volume: {
             ebsDevice: {
               volumeSize: 64,
-              volumeType: autoscaling.EbsDeviceVolumeType.GP2,
+              volumeType: autoscaling.EbsDeviceVolumeType.GP3,
               deleteOnTermination: false, // for a sudden termination
             },
           },
@@ -102,7 +102,7 @@ export class P4Pattern extends cdk.Construct {
           volume: {
             ebsDevice: {
               volumeSize: 128,
-              volumeType: autoscaling.EbsDeviceVolumeType.GP2,
+              volumeType: autoscaling.EbsDeviceVolumeType.GP3,
               deleteOnTermination: false, // for a sudden termination
             },
           },

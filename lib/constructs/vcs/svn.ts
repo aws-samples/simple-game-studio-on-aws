@@ -92,7 +92,7 @@ sudo systemctl start httpd
     });
     const ebsSetting = {
       volumeSize: 300,
-      volumeType: autoscaling.EbsDeviceVolumeType.GP2,
+      volumeType: autoscaling.EbsDeviceVolumeType.GP3,
       deleteOnTermination: false, // for a sudden termination
     };
 
