@@ -217,7 +217,7 @@ EOF
         imageId: machineImage.getImage(this).imageId,
         userData: cdk.Fn.base64(userData.render()),
         iamInstanceProfile: {
-          arn: new iam.CfnInstanceProfile(this, "SVNInstanceProfile", {
+          arn: new iam.CfnInstanceProfile(this, "JenkinsInstanceProfile", {
             path: "/",
             roles: [jenkinsRole.roleName],
           }).attrArn,
