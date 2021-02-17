@@ -31,6 +31,7 @@ new VCSStack(app, "VCSStack", {
   backup: setup.awsBackup,
   allowAccessFrom: internalNetwork,
   ssmLogBucket: setup.ssmLoggingBucket,
+  isSVN: !!process.env.IS_SVN,
 });
 
 const bn = new BuildNodeImageStack(app, "BuildNodeImageStack", {
