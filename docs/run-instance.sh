@@ -118,6 +118,15 @@ user_data_raw = Template('''
 
     cd C:\\
 
+    # install 7-zip
+    
+    $ff_url = "https://www.7-zip.org/a/7z1900-x64.msi"
+    $wc = New-Object net.webclient
+    $output = "C:\\7zip.msi"        
+    $wc.Downloadfile($ff_url, $output)
+    $logFile = "C:\\7zip.log"
+    Start-Process msiexec.exe -Wait -ArgumentList "/I $output /quiet /norestart /L*v $logFile"
+        
     # install corretto
 
     $url = "https://d3pxv6yz143wms.cloudfront.net/11.0.3.7.1/amazon-corretto-11.0.3.7.1-1-windows-x64.msi"
