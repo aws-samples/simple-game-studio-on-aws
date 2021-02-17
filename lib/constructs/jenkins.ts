@@ -94,10 +94,7 @@ export class JenkinsPattern extends cdk.Construct {
             ],
             conditions: {
               StringEquals: {
-                "ec2:Vpc": `arn:aws:ec2:${cdk.Stack.of(this).region}:${
-                  cdk.Stack.of(this).account
-                }:vpc/${props.vpc.vpcId}`,
-                "ec2:ResourceTag/Purpose": "BuildNode",
+                "ec2:ResourceTag/Purpose": "buildnode",
               },
             },
           }),
