@@ -89,51 +89,30 @@ export class WorkstationPattern extends cdk.Construct {
         </powershell>
         `);
 
-    new ec2.CfnLaunchTemplate(this, "workstation-template", {
+    const workstationTemplate = new ec2.LaunchTemplate(this, "workstation-template", {
       launchTemplateName: "workstation-template",
-      launchTemplateData: {
-        instanceType: props.instanceType.toString(),
-        imageId: ec2.MachineImage.latestWindows(
-          ec2.WindowsVersion.WINDOWS_SERVER_2019_JAPANESE_FULL_BASE
-        ).getImage(this).imageId,
-        userData: cdk.Fn.base64(userData.render()),
-        iamInstanceProfile: {
-          arn: new iam.CfnInstanceProfile(this, "WorkstationInstanceProfile", {
-            path: "/",
-            roles: [workstationRole.roleName],
-          }).attrArn,
-        },
-        blockDeviceMappings: [
-          {
-            deviceName: "/dev/sda1",
-            ebs: {
+      instanceType: props.instanceType,
+      machineImage: ec2.MachineImage.latestWindows(
+        ec2.WindowsVersion.WINDOWS_SERVER_2019_JAPANESE_FULL_BASE
+      ),
+      userData,
+      role: workstationRole,
+      blockDevices: [
+        {
+          deviceName: "/dev/sda1",
+          volume: {
+            ebsDevice: {
               volumeSize: 500,
               volumeType: ec2.EbsDeviceVolumeType.GP3,
-            },
+            }
           },
-        ],
-        securityGroupIds: [workstationSG.securityGroupId],
-        tagSpecifications: [
-          {
-            resourceType: "instance",
-            tags: [
-              {
-                key: "Name",
-                value: "NICE DCV",
-              },
-              {
-                key: "Feature",
-                value: "Join-AD",
-              },
-              {
-                key: "NICE DCV AD User",
-                value: "",
-              },
-            ],
-          },
-        ],
-      },
+        },
+      ],
+      securityGroup: workstationSG,
     });
+    cdk.Tags.of(workstationTemplate).add("Name", "NICE DCV");
+    cdk.Tags.of(workstationTemplate).add("Feature", "Join-AD");
+    cdk.Tags.of(workstationTemplate).add("NICE DCV AD User", "");
   }
 
   setupNiceDCV(owner_name: string): string {

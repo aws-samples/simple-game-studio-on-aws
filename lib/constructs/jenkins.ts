@@ -203,37 +203,22 @@ EOF
     });
     cdk.Tags.of(this.instance).add("Name", "Jenkins");
 
-    new ec2.CfnLaunchTemplate(this, "jenkins-template", {
+    const jenkinsTmplate = new ec2.LaunchTemplate(this, "jenkins-template", {
       launchTemplateName: "jenkins-template",
-      launchTemplateData: {
-        instanceType: instanceType.toString(),
-        imageId: machineImage.getImage(this).imageId,
-        userData: cdk.Fn.base64(userData.render()),
-        iamInstanceProfile: {
-          arn: new iam.CfnInstanceProfile(this, "JenkinsInstanceProfile", {
-            path: "/",
-            roles: [jenkinsRole.roleName],
-          }).attrArn,
-        },
-        blockDeviceMappings: [
-          {
-            deviceName: "/dev/sda1",
-            ebs: ebsSetting,
+      instanceType,
+      machineImage,
+      userData: userData,
+      role: jenkinsRole,
+      blockDevices: [
+        {
+          deviceName: "/dev/sda1",
+          volume: {
+            ebsDevice: ebsSetting,
           },
-        ],
-        securityGroupIds: [jenkinsSecurityGroup.securityGroupId],
-        tagSpecifications: [
-          {
-            resourceType: "instance",
-            tags: [
-              {
-                key: "Name",
-                value: "Jenkins",
-              },
-            ],
-          },
-        ],
-      },
+        }
+      ],
+      securityGroup: jenkinsSecurityGroup,
     });
+    cdk.Tags.of(jenkinsTmplate).add("Name", "Jenkins");
   }
 }
