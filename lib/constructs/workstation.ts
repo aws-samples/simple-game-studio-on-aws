@@ -79,6 +79,11 @@ export class WorkstationPattern extends cdk.Construct {
         ec2.Port.tcp(8443),
         "allow NICE DCV access"
       );
+      workstationSG.addIngressRule(
+        p,
+        ec2.Port.udp(8443),
+        "allow NICE DCV QUIC access"
+      );
     });
 
     const userData = ec2.UserData.custom(`
@@ -117,7 +122,7 @@ export class WorkstationPattern extends cdk.Construct {
 
   setupNiceDCV(owner_name: string): string {
     return `
-        $ff_url = "https://d1uj6qtbmh3dt5.cloudfront.net/2020.2/Servers/nice-dcv-server-x64-Release-2020.2-9662.msi"
+        $ff_url = "https://d1uj6qtbmh3dt5.cloudfront.net/2021.2/Servers/nice-dcv-server-x64-Release-2021.2-11048.msi"
         $wc = New-Object net.webclient
         $wc.Downloadfile($ff_url, "nice.msi")
         Start-Process -Wait -FilePath msiexec.exe -ArgumentList /i, nice.msi, /passive, /norestart, /l*v, nice_install_msi.log, ADDLOCAL=ALL, AUTOMATIC_SESSION_OWNER=${owner_name}
@@ -126,18 +131,6 @@ export class WorkstationPattern extends cdk.Construct {
 
   downloadGPUDriver(): string {
     return `
-    $KeyPrefix = "g4/latest"
-    $Bucket = "ec2-windows-nvidia-drivers"
-    $LocalPath = "$home\\Desktop\\NVIDIA"
-    $Objects = Get-S3Object -BucketName $Bucket -KeyPrefix $KeyPrefix -Region us-east-1
-    foreach ($Object in $Objects) {
-        $LocalFileName = $Object.Key
-        if ($LocalFileName -ne '' -and $Object.Size -ne 0) {
-            $LocalFilePath = Join-Path $LocalPath $LocalFileName
-            Copy-S3Object -BucketName $Bucket -Key $Object.Key -LocalFile $LocalFilePath -Region us-east-1
-        }
-    }
-
     $Bucket = "ec2-windows-nvidia-drivers"
     $KeyPrefix = "latest"
     $LocalPath = "$home\\Desktop\\NVIDIA"
@@ -149,18 +142,6 @@ export class WorkstationPattern extends cdk.Construct {
             Copy-S3Object -BucketName $Bucket -Key $Object.Key -LocalFile $LocalFilePath -Region us-east-1
         }
     }
-
-    $Bucket = "nvidia-gaming"
-    $KeyPrefix = "windows/latest"
-    $LocalPath = "$home\\Desktop\\NVIDIA"
-    $Objects = Get-S3Object -BucketName $Bucket -KeyPrefix $KeyPrefix -Region us-east-1
-    foreach ($Object in $Objects) {
-        $LocalFileName = $Object.Key
-        if ($LocalFileName -ne '' -and $Object.Size -ne 0) {
-            $LocalFilePath = Join-Path $LocalPath $LocalFileName
-            Copy-S3Object -BucketName $Bucket -Key $Object.Key -LocalFile $LocalFilePath -Region us-east-1
-        }
-    }    
     `;
   }
 }
