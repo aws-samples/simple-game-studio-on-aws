@@ -119,37 +119,22 @@ sudo systemctl start httpd
       props.backup.BackupTagValue
     );
 
-    new ec2.CfnLaunchTemplate(this, "svn-template", {
+    const svnTemplate = new ec2.LaunchTemplate(this, "svn-template", {
       launchTemplateName: "svn-template",
-      launchTemplateData: {
-        instanceType: instanceType.toString(),
-        imageId: machineImage.getImage(this).imageId,
-        userData: cdk.Fn.base64(userData.render()),
-        iamInstanceProfile: {
-          arn: new iam.CfnInstanceProfile(this, "SVNInstanceProfile", {
-            path: "/",
-            roles: [svnRole.roleName],
-          }).attrArn,
+      instanceType,
+      machineImage,
+      userData: userData,
+      role: svnRole,
+      blockDevices: [
+        {
+          deviceName: "/dev/sda1",
+          volume: {
+            ebsDevice: ebsSetting
+          }
         },
-        blockDeviceMappings: [
-          {
-            deviceName: "/dev/sda1",
-            ebs: ebsSetting,
-          },
-        ],
-        securityGroupIds: [svnSecurityGroup.securityGroupId],
-        tagSpecifications: [
-          {
-            resourceType: "instance",
-            tags: [
-              {
-                key: props.backup.BackupTagKey,
-                value: props.backup.BackupTagValue,
-              },
-            ],
-          },
-        ],
-      },
+      ],
+      securityGroup: svnSecurityGroup,
     });
+    cdk.Tags.of(svnTemplate).add(props.backup.BackupTagKey, props.backup.BackupTagValue)
   }
 }
