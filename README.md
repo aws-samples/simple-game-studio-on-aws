@@ -27,7 +27,7 @@ CDK do the complex construction on behalf of you. You can customize what will be
     - CLI: `$ curl http://checkip.amazonaws.com/`
     - or, use your IP for your office network
 1. `$ npm i` in the root directory.
-1. `$ ALLOW_ACCESS_FROM=<YOUR_IP>/32 cdk deploy '*'` in the root directory.
+1. `$ ALLOW_CIDR=<YOUR_IP>/32 cdk deploy '*'` in the root directory.
 1. Type `yes` for security questions, and wait to complete. You can also watch the progress in AWS Cloudformation console.
     1. Debug it by reading error messages if some problem occurred.
 1. Configure services as you like. Guide for each service is [written below](#service-guide).

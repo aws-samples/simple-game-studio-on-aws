@@ -79,6 +79,11 @@ export class WorkstationPattern extends cdk.Construct {
         ec2.Port.tcp(8443),
         "allow NICE DCV access"
       );
+      workstationSG.addIngressRule(
+        p,
+        ec2.Port.udp(8443),
+        "allow NICE DCV QUIC access"
+      );
     });
 
     const userData = ec2.UserData.custom(`
@@ -89,51 +94,30 @@ export class WorkstationPattern extends cdk.Construct {
         </powershell>
         `);
 
-    new ec2.CfnLaunchTemplate(this, "workstation-template", {
+    const workstationTemplate = new ec2.LaunchTemplate(this, "workstation-template", {
       launchTemplateName: "workstation-template",
-      launchTemplateData: {
-        instanceType: props.instanceType.toString(),
-        imageId: ec2.MachineImage.latestWindows(
-          ec2.WindowsVersion.WINDOWS_SERVER_2019_JAPANESE_FULL_BASE
-        ).getImage(this).imageId,
-        userData: cdk.Fn.base64(userData.render()),
-        iamInstanceProfile: {
-          arn: new iam.CfnInstanceProfile(this, "WorkstationInstanceProfile", {
-            path: "/",
-            roles: [workstationRole.roleName],
-          }).attrArn,
-        },
-        blockDeviceMappings: [
-          {
-            deviceName: "/dev/sda1",
-            ebs: {
+      instanceType: props.instanceType,
+      machineImage: ec2.MachineImage.latestWindows(
+        ec2.WindowsVersion.WINDOWS_SERVER_2019_JAPANESE_FULL_BASE
+      ),
+      userData,
+      role: workstationRole,
+      blockDevices: [
+        {
+          deviceName: "/dev/sda1",
+          volume: {
+            ebsDevice: {
               volumeSize: 500,
               volumeType: ec2.EbsDeviceVolumeType.GP3,
-            },
+            }
           },
-        ],
-        securityGroupIds: [workstationSG.securityGroupId],
-        tagSpecifications: [
-          {
-            resourceType: "instance",
-            tags: [
-              {
-                key: "Name",
-                value: "NICE DCV",
-              },
-              {
-                key: "Feature",
-                value: "Join-AD",
-              },
-              {
-                key: "NICE DCV AD User",
-                value: "",
-              },
-            ],
-          },
-        ],
-      },
+        },
+      ],
+      securityGroup: workstationSG,
     });
+    cdk.Tags.of(workstationTemplate).add("Name", "NICE DCV");
+    cdk.Tags.of(workstationTemplate).add("Feature", "Join-AD");
+    cdk.Tags.of(workstationTemplate).add("NICE DCV AD User", "");
   }
 
   setupNiceDCV(owner_name: string): string {
@@ -147,18 +131,6 @@ export class WorkstationPattern extends cdk.Construct {
 
   downloadGPUDriver(): string {
     return `
-    $KeyPrefix = "g4/latest"
-    $Bucket = "ec2-windows-nvidia-drivers"
-    $LocalPath = "$home\\Desktop\\NVIDIA"
-    $Objects = Get-S3Object -BucketName $Bucket -KeyPrefix $KeyPrefix -Region us-east-1
-    foreach ($Object in $Objects) {
-        $LocalFileName = $Object.Key
-        if ($LocalFileName -ne '' -and $Object.Size -ne 0) {
-            $LocalFilePath = Join-Path $LocalPath $LocalFileName
-            Copy-S3Object -BucketName $Bucket -Key $Object.Key -LocalFile $LocalFilePath -Region us-east-1
-        }
-    }
-
     $Bucket = "ec2-windows-nvidia-drivers"
     $KeyPrefix = "latest"
     $LocalPath = "$home\\Desktop\\NVIDIA"
@@ -170,18 +142,6 @@ export class WorkstationPattern extends cdk.Construct {
             Copy-S3Object -BucketName $Bucket -Key $Object.Key -LocalFile $LocalFilePath -Region us-east-1
         }
     }
-
-    $Bucket = "nvidia-gaming"
-    $KeyPrefix = "windows/latest"
-    $LocalPath = "$home\\Desktop\\NVIDIA"
-    $Objects = Get-S3Object -BucketName $Bucket -KeyPrefix $KeyPrefix -Region us-east-1
-    foreach ($Object in $Objects) {
-        $LocalFileName = $Object.Key
-        if ($LocalFileName -ne '' -and $Object.Size -ne 0) {
-            $LocalFilePath = Join-Path $LocalPath $LocalFileName
-            Copy-S3Object -BucketName $Bucket -Key $Object.Key -LocalFile $LocalFilePath -Region us-east-1
-        }
-    }    
     `;
   }
 }
