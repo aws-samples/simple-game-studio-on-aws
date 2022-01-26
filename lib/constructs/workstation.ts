@@ -138,7 +138,7 @@ export class WorkstationPattern extends cdk.Construct {
 
   setupNiceDCV(owner_name: string): string {
     return `
-        $ff_url = "https://d1uj6qtbmh3dt5.cloudfront.net/2020.2/Servers/nice-dcv-server-x64-Release-2020.2-9662.msi"
+        $ff_url = "https://d1uj6qtbmh3dt5.cloudfront.net/2021.3/Servers/nice-dcv-server-x64-Release-2021.3-11591.msi"
         $wc = New-Object net.webclient
         $wc.Downloadfile($ff_url, "nice.msi")
         Start-Process -Wait -FilePath msiexec.exe -ArgumentList /i, nice.msi, /passive, /norestart, /l*v, nice_install_msi.log, ADDLOCAL=ALL, AUTOMATIC_SESSION_OWNER=${owner_name}
