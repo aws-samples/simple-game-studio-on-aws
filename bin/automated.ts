@@ -1,26 +1,25 @@
 #!/usr/bin/env node
 import "source-map-support/register";
-import * as cdk from "@aws-cdk/core";
-import * as ec2 from "@aws-cdk/aws-ec2";
+import { App, aws_ec2 } from "aws-cdk-lib";
 import { SetupStack } from "../lib/stacks/setup-stack";
 import { VCSStack } from "../lib/stacks/vcs-stack";
 import { CICDStack } from "../lib/stacks/cicd-stack";
 import { BuildNodeImageStack } from "../lib/stacks/buildnode-image-stack";
 import { WorkstationStack } from "../lib/stacks/workstation-stack";
 
-const app = new cdk.App();
+const app = new App();
 
 const setup = new SetupStack(app, "SetupStack", {});
 
-const internalNetwork: ec2.IPeer[] = [];
+const internalNetwork: aws_ec2.IPeer[] = [];
 if (process.env.ALLOW_CIDR) {
   process.env.ALLOW_CIDR.split(",").forEach((cidr) => {
-    internalNetwork.push(ec2.Peer.ipv4(cidr));
+    internalNetwork.push(aws_ec2.Peer.ipv4(cidr));
   });
 }
 if (process.env.ALLOW_PREFIX_LIST) {
   process.env.ALLOW_PREFIX_LIST.split(",").forEach((pl) => {
-    internalNetwork.push(ec2.Peer.prefixList(pl));
+    internalNetwork.push(aws_ec2.Peer.prefixList(pl));
   });
 }
 
@@ -61,9 +60,9 @@ new WorkstationStack(app, "WorkStationStack", {
   allowAccessFrom: internalNetwork,
   ssmLogBucket: setup.ssmLoggingBucket,
 
-  instanceType: ec2.InstanceType.of(
-    ec2.InstanceClass.G4DN,
-    ec2.InstanceSize.XLARGE
+  instanceType: aws_ec2.InstanceType.of(
+    aws_ec2.InstanceClass.G4DN,
+    aws_ec2.InstanceSize.XLARGE
   ),
   activeDirectory: setup.ad,
 });

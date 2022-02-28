@@ -1,14 +1,18 @@
-import * as cdk from "@aws-cdk/core";
-import * as ec2 from "@aws-cdk/aws-ec2";
-import * as directoryService from "@aws-cdk/aws-directoryservice";
-import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
+import {
+  aws_directoryservice,
+  aws_ec2,
+  aws_secretsmanager,
+  CfnOutput,
+  Fn,
+} from "aws-cdk-lib";
+import { Construct } from "constructs";
 
 export class SimpleADPatternProps {
   readonly name: string;
-  readonly vpc: ec2.IVpc;
+  readonly vpc: aws_ec2.IVpc;
 }
 
-export class SimpleADPattern extends cdk.Construct {
+export class SimpleADPattern extends Construct {
   readonly name: string;
   readonly directoryOU: string;
   readonly directoryId: string;
@@ -17,7 +21,7 @@ export class SimpleADPattern extends cdk.Construct {
   // Caution: use this value only in the same stack!
   readonly dnsIpAddresses: string[];
 
-  constructor(scope: cdk.Construct, id: string, props: SimpleADPatternProps) {
+  constructor(scope: Construct, id: string, props: SimpleADPatternProps) {
     super(scope, id);
 
     this.name = props.name;
@@ -26,7 +30,7 @@ export class SimpleADPattern extends cdk.Construct {
       .map((e) => `DC=${e}`)
       .join(",");
 
-    const adSecret = new secretsmanager.Secret(this, "SimpleADSecret", {
+    const adSecret = new aws_secretsmanager.Secret(this, "SimpleADSecret", {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({ username: "admin" }),
         generateStringKey: "password",
@@ -34,7 +38,7 @@ export class SimpleADPattern extends cdk.Construct {
       },
     });
 
-    const directory = new directoryService.CfnSimpleAD(this, "StudioAD", {
+    const directory = new aws_directoryservice.CfnSimpleAD(this, "StudioAD", {
       name: this.name,
       password: adSecret.secretValueFromJson("password").toString(),
       size: "Small",
@@ -49,8 +53,8 @@ export class SimpleADPattern extends cdk.Construct {
     // to address this issue: https://github.com/aws/aws-cdk/issues/12523
     this.dnsAddressesExportIds = ["StudioADDNS1", "StudioADDNS2"];
     [0, 1].map((i) => {
-      new cdk.CfnOutput(this, this.dnsAddressesExportIds[i], {
-        value: cdk.Fn.select(i, directory.attrDnsIpAddresses),
+      new CfnOutput(this, this.dnsAddressesExportIds[i], {
+        value: Fn.select(i, directory.attrDnsIpAddresses),
         exportName: this.dnsAddressesExportIds[i],
       });
     });

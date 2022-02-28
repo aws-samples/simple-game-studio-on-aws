@@ -1,39 +1,40 @@
-import * as cdk from "@aws-cdk/core";
-import * as iam from "@aws-cdk/aws-iam";
-import { ServicePrincipal } from "@aws-cdk/aws-iam";
-import * as backup from "@aws-cdk/aws-backup";
-import * as kms from "@aws-cdk/aws-kms";
+import { aws_backup, aws_iam, aws_kms } from "aws-cdk-lib";
+import { Construct } from "constructs";
 
-export class BackupPattern extends cdk.Construct {
+export class BackupPattern extends Construct {
   readonly BackupTagKey: string = "aws-backup";
   readonly BackupTagValue: string = "true";
 
-  constructor(scope: cdk.Construct, id: string) {
+  constructor(scope: Construct, id: string) {
     super(scope, id);
 
     // create service role by myself
-    const backupRole = new iam.Role(scope, "game-studio-backup-role", {
-      assumedBy: new ServicePrincipal("backup.amazonaws.com"),
+    const backupRole = new aws_iam.Role(scope, "game-studio-backup-role", {
+      assumedBy: new aws_iam.ServicePrincipal("backup.amazonaws.com"),
     });
 
     backupRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName("AWSBackupOperatorAccess")
+      aws_iam.ManagedPolicy.fromAwsManagedPolicyName("AWSBackupOperatorAccess")
     );
     backupRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName(
+      aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
         "service-role/AWSBackupServiceRolePolicyForBackup"
       )
     );
 
-    const valutKey = new kms.Key(scope, "ValutDefaultKey", {
+    const valutKey = new aws_kms.Key(scope, "ValutDefaultKey", {
       enableKeyRotation: true,
       alias: "backup/default",
     });
-    const valut = new backup.CfnBackupVault(scope, "game-studio-backup-vault", {
-      backupVaultName: "game-studio-backup-vault",
-      encryptionKeyArn: valutKey.keyArn,
-    });
-    const backupPlan = new backup.CfnBackupPlan(
+    const valut = new aws_backup.CfnBackupVault(
+      scope,
+      "game-studio-backup-vault",
+      {
+        backupVaultName: "game-studio-backup-vault",
+        encryptionKeyArn: valutKey.keyArn,
+      }
+    );
+    const backupPlan = new aws_backup.CfnBackupPlan(
       scope,
       "game-studio-ebs-backup",
       {
@@ -54,19 +55,23 @@ export class BackupPattern extends cdk.Construct {
     );
     backupPlan.addDependsOn(valut);
 
-    new backup.CfnBackupSelection(scope, "game-studio-ebs-backup-selection", {
-      backupSelection: {
-        iamRoleArn: backupRole.roleArn,
-        selectionName: "ebs-by-tag",
-        listOfTags: [
-          {
-            conditionType: "STRINGEQUALS",
-            conditionKey: this.BackupTagKey,
-            conditionValue: this.BackupTagValue,
-          },
-        ],
-      },
-      backupPlanId: backupPlan.attrBackupPlanId,
-    });
+    new aws_backup.CfnBackupSelection(
+      scope,
+      "game-studio-ebs-backup-selection",
+      {
+        backupSelection: {
+          iamRoleArn: backupRole.roleArn,
+          selectionName: "ebs-by-tag",
+          listOfTags: [
+            {
+              conditionType: "STRINGEQUALS",
+              conditionKey: this.BackupTagKey,
+              conditionValue: this.BackupTagValue,
+            },
+          ],
+        },
+        backupPlanId: backupPlan.attrBackupPlanId,
+      }
+    );
   }
 }

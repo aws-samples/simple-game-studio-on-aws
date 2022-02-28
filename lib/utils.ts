@@ -1,15 +1,14 @@
-import * as cdk from "@aws-cdk/core";
-import * as iam from "@aws-cdk/aws-iam";
-import * as s3 from "@aws-cdk/aws-s3";
+import { aws_iam, aws_s3 } from "aws-cdk-lib";
+import { Construct } from "constructs";
 
 export const createSSMPolicy = (
-  scope: cdk.Construct,
-  ssmLogBucket: s3.IBucket
-): iam.Policy =>
-  new iam.Policy(scope, "ssm-policy", {
+  scope: Construct,
+  ssmLogBucket: aws_s3.IBucket
+): aws_iam.Policy =>
+  new aws_iam.Policy(scope, "ssm-policy", {
     statements: [
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
+      new aws_iam.PolicyStatement({
+        effect: aws_iam.Effect.ALLOW,
         resources: ["*"],
         actions: [
           "ssmmessages:CreateControlChannel",
@@ -19,13 +18,13 @@ export const createSSMPolicy = (
           "ssm:UpdateInstanceInformation",
         ],
       }),
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
+      new aws_iam.PolicyStatement({
+        effect: aws_iam.Effect.ALLOW,
         resources: [ssmLogBucket.bucketArn],
         actions: ["s3:PutObject"],
       }),
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
+      new aws_iam.PolicyStatement({
+        effect: aws_iam.Effect.ALLOW,
         resources: ["*"],
         actions: [
           "logs:CreateLogStream",
@@ -34,13 +33,13 @@ export const createSSMPolicy = (
           "logs:DescribeLogStreams",
         ],
       }),
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
+      new aws_iam.PolicyStatement({
+        effect: aws_iam.Effect.ALLOW,
         resources: ["*"],
         actions: ["s3:GetEncryptionConfiguration"],
       }),
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
+      new aws_iam.PolicyStatement({
+        effect: aws_iam.Effect.ALLOW,
         resources: ["*"],
         actions: ["kms:GenerateDataKey"],
       }),

@@ -1,47 +1,50 @@
-import * as cdk from "@aws-cdk/core";
-import { ServicePrincipal } from "@aws-cdk/aws-iam";
+import {
+  aws_autoscaling,
+  aws_ec2,
+  aws_iam,
+  aws_s3,
+  ScopedAws,
+  Tags,
+} from "aws-cdk-lib";
+import { Construct } from "constructs";
 import { createSSMPolicy } from "../utils";
-import * as ec2 from "@aws-cdk/aws-ec2";
-import * as iam from "@aws-cdk/aws-iam";
-import * as autoscaling from "@aws-cdk/aws-autoscaling";
-import * as s3 from "@aws-cdk/aws-s3";
 
 export class JenkinsPatternProps {
-  readonly vpc: ec2.IVpc;
-  readonly allowAccessFrom: ec2.IPeer[];
+  readonly vpc: aws_ec2.IVpc;
+  readonly allowAccessFrom: aws_ec2.IPeer[];
 
-  readonly backupBucket: s3.IBucket;
-  readonly ssmLoggingBucket: s3.IBucket;
-  readonly artifactBucket: s3.IBucket;
+  readonly backupBucket: aws_s3.IBucket;
+  readonly ssmLoggingBucket: aws_s3.IBucket;
+  readonly artifactBucket: aws_s3.IBucket;
 
-  readonly buildNodeInstanceProfile: iam.CfnInstanceProfile;
-  readonly buildNodeSecurityGroup: ec2.ISecurityGroup;
+  readonly buildNodeInstanceProfile: aws_iam.CfnInstanceProfile;
+  readonly buildNodeSecurityGroup: aws_ec2.ISecurityGroup;
 }
 
-export class JenkinsPattern extends cdk.Construct {
-  readonly instance: ec2.Instance;
+export class JenkinsPattern extends Construct {
+  readonly instance: aws_ec2.Instance;
 
-  constructor(scope: cdk.Construct, id: string, props: JenkinsPatternProps) {
+  constructor(scope: Construct, id: string, props: JenkinsPatternProps) {
     super(scope, id);
 
-    const jenkinsSecurityGroup = new ec2.SecurityGroup(this, "jenkins-sg", {
+    const jenkinsSecurityGroup = new aws_ec2.SecurityGroup(this, "jenkins-sg", {
       vpc: props.vpc,
     });
 
     props.allowAccessFrom.forEach((p) => {
-      jenkinsSecurityGroup.addIngressRule(p, ec2.Port.tcp(80));
-      jenkinsSecurityGroup.addIngressRule(p, ec2.Port.tcp(443));
+      jenkinsSecurityGroup.addIngressRule(p, aws_ec2.Port.tcp(80));
+      jenkinsSecurityGroup.addIngressRule(p, aws_ec2.Port.tcp(443));
     });
     // for build nodes
     [80, 443, 50000].forEach((port) => {
       jenkinsSecurityGroup.addIngressRule(
-        ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
-        ec2.Port.tcp(port)
+        aws_ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
+        aws_ec2.Port.tcp(port)
       );
     });
 
-    const jenkinsRole = new iam.Role(this, "jenkins-role", {
-      assumedBy: new ServicePrincipal("ec2.amazonaws.com"),
+    const jenkinsRole = new aws_iam.Role(this, "jenkins-role", {
+      assumedBy: new aws_iam.ServicePrincipal("ec2.amazonaws.com"),
     });
     jenkinsRole.attachInlinePolicy(
       createSSMPolicy(this, props.ssmLoggingBucket)
@@ -50,15 +53,15 @@ export class JenkinsPattern extends cdk.Construct {
 
     // to launch instance from Jenkins
     jenkinsRole.attachInlinePolicy(
-      new iam.Policy(scope, "jenkins-ec2-policy", {
+      new aws_iam.Policy(scope, "jenkins-ec2-policy", {
         statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
+          new aws_iam.PolicyStatement({
+            effect: aws_iam.Effect.ALLOW,
             resources: ["*"],
             actions: ["iam:ListInstanceProfilesForRole", "iam:PassRole"],
           }),
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
+          new aws_iam.PolicyStatement({
+            effect: aws_iam.Effect.ALLOW,
             resources: ["*"],
             actions: [
               "ec2:DescribeSpotInstanceRequests",
@@ -74,8 +77,8 @@ export class JenkinsPattern extends cdk.Construct {
               "ec2:GetPasswordData",
             ],
           }),
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
+          new aws_iam.PolicyStatement({
+            effect: aws_iam.Effect.ALLOW,
             resources: ["*"],
             actions: [
               "ec2:RequestSpotInstances",
@@ -84,8 +87,8 @@ export class JenkinsPattern extends cdk.Construct {
               "ec2:DeleteTags",
             ],
           }),
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
+          new aws_iam.PolicyStatement({
+            effect: aws_iam.Effect.ALLOW,
             resources: ["*"],
             actions: [
               "ec2:StartInstances",
@@ -103,7 +106,7 @@ export class JenkinsPattern extends cdk.Construct {
     );
 
     /* eslint-disable no-useless-escape */
-    const userData = ec2.UserData.custom(`
+    const userData = aws_ec2.UserData.custom(`
             #!/usr/bin/env bash
 
             set -eux
@@ -157,7 +160,7 @@ EOF
 export BN_SUBNET_ID=${props.vpc.publicSubnets[0].subnetId}
 export BN_INSTANCE_PROFILE_ARN=${props.buildNodeInstanceProfile.attrArn}
 export BN_SG_ID=${props.buildNodeSecurityGroup.securityGroupId}
-export BN_REGION=${cdk.Stack.of(this).region}
+export BN_REGION=${new ScopedAws(this).region}
 export BUILD_ARTIFACT_BUCKET=${props.artifactBucket.bucketName}
 EOF
             sudo chmod 755 /usr/local/env-vars-for-launching-buildnode.sh
@@ -172,21 +175,21 @@ EOF
         `);
     /* eslint-enable no-useless-escape */
 
-    const instanceType = ec2.InstanceType.of(
-      ec2.InstanceClass.M5,
-      ec2.InstanceSize.XLARGE
+    const instanceType = aws_ec2.InstanceType.of(
+      aws_ec2.InstanceClass.M5,
+      aws_ec2.InstanceSize.XLARGE
     );
-    const machineImage = ec2.MachineImage.latestAmazonLinux({
-      generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
+    const machineImage = aws_ec2.MachineImage.latestAmazonLinux({
+      generation: aws_ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
     });
     const ebsSetting = {
       volumeSize: 30,
-      volumeType: autoscaling.EbsDeviceVolumeType.GP3,
+      volumeType: aws_autoscaling.EbsDeviceVolumeType.GP3,
     };
 
-    this.instance = new ec2.Instance(this, "jenkins-instance", {
+    this.instance = new aws_ec2.Instance(this, "jenkins-instance", {
       vpc: props.vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+      vpcSubnets: { subnetType: aws_ec2.SubnetType.PUBLIC },
       instanceType,
       machineImage,
       userData,
@@ -201,24 +204,28 @@ EOF
         },
       ],
     });
-    cdk.Tags.of(this.instance).add("Name", "Jenkins");
+    Tags.of(this.instance).add("Name", "Jenkins");
 
-    const jenkinsTmplate = new ec2.LaunchTemplate(this, "jenkins-template", {
-      launchTemplateName: "jenkins-template",
-      instanceType,
-      machineImage,
-      userData: userData,
-      role: jenkinsRole,
-      blockDevices: [
-        {
-          deviceName: "/dev/sda1",
-          volume: {
-            ebsDevice: ebsSetting,
+    const jenkinsTmplate = new aws_ec2.LaunchTemplate(
+      this,
+      "jenkins-template",
+      {
+        launchTemplateName: "jenkins-template",
+        instanceType,
+        machineImage,
+        userData: userData,
+        role: jenkinsRole,
+        blockDevices: [
+          {
+            deviceName: "/dev/sda1",
+            volume: {
+              ebsDevice: ebsSetting,
+            },
           },
-        }
-      ],
-      securityGroup: jenkinsSecurityGroup,
-    });
-    cdk.Tags.of(jenkinsTmplate).add("Name", "Jenkins");
+        ],
+        securityGroup: jenkinsSecurityGroup,
+      }
+    );
+    Tags.of(jenkinsTmplate).add("Name", "Jenkins");
   }
 }

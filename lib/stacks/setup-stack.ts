@@ -1,39 +1,47 @@
-import * as cdk from "@aws-cdk/core";
-import * as s3 from "@aws-cdk/aws-s3";
-import * as ec2 from "@aws-cdk/aws-ec2";
-import * as route53 from "@aws-cdk/aws-route53";
-import * as ssm from "@aws-cdk/aws-ssm";
+import {
+  aws_ec2,
+  aws_route53,
+  aws_s3,
+  aws_ssm,
+  Stack,
+  StackProps,
+} from "aws-cdk-lib";
+import { Construct } from "constructs";
 import { BackupPattern } from "../constructs/backup";
 import { SimpleADPattern } from "../constructs/simple-ad";
 
-export class SetupStack extends cdk.Stack {
-  readonly jenkinsBackupBucket: s3.IBucket;
-  readonly gameDevOnAWSResourcesBucket: s3.IBucket;
-  readonly gameDevOnAWSLoggingBucket: s3.IBucket;
-  readonly ssmLoggingBucket: s3.IBucket;
+export class SetupStack extends Stack {
+  readonly jenkinsBackupBucket: aws_s3.IBucket;
+  readonly gameDevOnAWSResourcesBucket: aws_s3.IBucket;
+  readonly gameDevOnAWSLoggingBucket: aws_s3.IBucket;
+  readonly ssmLoggingBucket: aws_s3.IBucket;
 
-  readonly vpc: ec2.IVpc;
-  readonly zone: route53.IPrivateHostedZone;
+  readonly vpc: aws_ec2.IVpc;
+  readonly zone: aws_route53.IPrivateHostedZone;
   readonly ad: SimpleADPattern;
   readonly awsBackup: BackupPattern;
 
-  constructor(scope: cdk.Construct, id: string, props: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: StackProps) {
     super(scope, id, props);
 
-    this.jenkinsBackupBucket = new s3.Bucket(this, "jenkinsBackupBucket", {});
-    this.gameDevOnAWSResourcesBucket = new s3.Bucket(
+    this.jenkinsBackupBucket = new aws_s3.Bucket(
+      this,
+      "jenkinsBackupBucket",
+      {}
+    );
+    this.gameDevOnAWSResourcesBucket = new aws_s3.Bucket(
       this,
       "GameDevOnAWSResourcesBucket",
       {}
     );
-    this.gameDevOnAWSLoggingBucket = new s3.Bucket(
+    this.gameDevOnAWSLoggingBucket = new aws_s3.Bucket(
       this,
       "GameDevOnAWSLoggingBucket",
       {}
     );
-    this.ssmLoggingBucket = new s3.Bucket(this, "SSMLoggingBucket", {});
+    this.ssmLoggingBucket = new aws_s3.Bucket(this, "SSMLoggingBucket", {});
 
-    this.vpc = new ec2.Vpc(this, "aws-game-stuio-vpc", {
+    this.vpc = new aws_ec2.Vpc(this, "aws-game-stuio-vpc", {
       // in order to use internal DNS (private hostzone)
       enableDnsHostnames: true,
       enableDnsSupport: true,
@@ -43,17 +51,25 @@ export class SetupStack extends cdk.Stack {
       vpc: this.vpc,
       name: "simple-ad.mycompany",
     });
-    const dhcpOptions = new ec2.CfnDHCPOptions(this, "simple-ad-dhcp-options", {
-      domainName: "simple-ad-dhcp-options",
-      domainNameServers: this.ad.dnsIpAddresses,
-    });
-    new ec2.CfnVPCDHCPOptionsAssociation(this, "simplead-dhcp-association", {
-      dhcpOptionsId: dhcpOptions.ref,
-      vpcId: this.vpc.vpcId,
-    });
+    const dhcpOptions = new aws_ec2.CfnDHCPOptions(
+      this,
+      "simple-ad-dhcp-options",
+      {
+        domainName: "simple-ad-dhcp-options",
+        domainNameServers: this.ad.dnsIpAddresses,
+      }
+    );
+    new aws_ec2.CfnVPCDHCPOptionsAssociation(
+      this,
+      "simplead-dhcp-association",
+      {
+        dhcpOptionsId: dhcpOptions.ref,
+        vpcId: this.vpc.vpcId,
+      }
+    );
 
     // SSM state manager association for Workstations
-    new ssm.CfnAssociation(this, "setup-ad", {
+    new aws_ssm.CfnAssociation(this, "setup-ad", {
       name: "AWS-JoinDirectoryServiceDomain",
       associationName: "JoinADForWorkstations",
       parameters: {
@@ -71,10 +87,14 @@ export class SetupStack extends cdk.Stack {
       ],
     });
 
-    this.zone = new route53.PrivateHostedZone(this, "GameStuidoHostedZone", {
-      zoneName: "gamestudio.aws.internal",
-      vpc: this.vpc, // At least one VPC has to be added to a Private Hosted Zone.
-    });
+    this.zone = new aws_route53.PrivateHostedZone(
+      this,
+      "GameStuidoHostedZone",
+      {
+        zoneName: "gamestudio.aws.internal",
+        vpc: this.vpc, // At least one VPC has to be added to a Private Hosted Zone.
+      }
+    );
 
     this.awsBackup = new BackupPattern(this, "AWSBackup");
   }

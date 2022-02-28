@@ -1,25 +1,23 @@
-import * as cdk from "@aws-cdk/core";
-import * as s3 from "@aws-cdk/aws-s3";
-import * as ec2 from "@aws-cdk/aws-ec2";
-import * as route53 from "@aws-cdk/aws-route53";
+import { Construct } from "constructs";
 import { SVNPattern } from "../constructs/vcs/svn";
 import { BackupPattern } from "../constructs/backup";
 import { P4Pattern } from "../constructs/vcs/perforce";
+import { aws_ec2, aws_route53, aws_s3, Stack, StackProps } from "aws-cdk-lib";
 
-interface VCSStackProps extends cdk.StackProps {
-  vpc: ec2.IVpc;
-  zone: route53.IPrivateHostedZone;
+interface VCSStackProps extends StackProps {
+  vpc: aws_ec2.IVpc;
+  zone: aws_route53.IPrivateHostedZone;
   recordName: string;
   backup: BackupPattern;
-  allowAccessFrom: ec2.IPeer[];
-  ssmLogBucket: s3.IBucket;
+  allowAccessFrom: aws_ec2.IPeer[];
+  ssmLogBucket: aws_s3.IBucket;
   isSVN: boolean;
 }
 
-export class VCSStack extends cdk.Stack {
+export class VCSStack extends Stack {
   readonly vcsEndpoint: string;
 
-  constructor(scope: cdk.Construct, id: string, props: VCSStackProps) {
+  constructor(scope: Construct, id: string, props: VCSStackProps) {
     super(scope, id, props);
 
     if (props.isSVN) {
@@ -29,14 +27,14 @@ export class VCSStack extends cdk.Stack {
         backup: props.backup,
 
         allowAccessFrom: props.allowAccessFrom,
-        subnetType: ec2.SubnetType.PUBLIC,
+        subnetType: aws_ec2.SubnetType.PUBLIC,
         ssmLogBucket: props.ssmLogBucket,
       });
 
-      new route53.ARecord(this, "vcs-ip", {
+      new aws_route53.ARecord(this, "vcs-ip", {
         zone: props.zone,
         recordName: props.recordName,
-        target: route53.RecordTarget.fromIpAddresses(
+        target: aws_route53.RecordTarget.fromIpAddresses(
           svn.instance.instancePrivateIp
         ),
       });
@@ -47,15 +45,15 @@ export class VCSStack extends cdk.Stack {
       vpc: props.vpc,
       backup: props.backup,
       allowAccessFrom: props.allowAccessFrom,
-      subnetType: ec2.SubnetType.PUBLIC,
+      subnetType: aws_ec2.SubnetType.PUBLIC,
       ssmLogBucket: props.ssmLogBucket,
       // hasReplica: true, // WIP
     });
 
-    new route53.ARecord(this, "p4-ip", {
+    new aws_route53.ARecord(this, "p4-ip", {
       zone: props.zone,
       recordName: "p4",
-      target: route53.RecordTarget.fromIpAddresses(
+      target: aws_route53.RecordTarget.fromIpAddresses(
         p4.primaryInstance.instancePrivateIp
       ),
     });

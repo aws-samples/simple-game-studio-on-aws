@@ -1,38 +1,36 @@
-import * as cdk from "@aws-cdk/core";
-import * as s3 from "@aws-cdk/aws-s3";
-import * as ec2 from "@aws-cdk/aws-ec2";
-import * as iam from "@aws-cdk/aws-iam";
+import { Construct } from "constructs";
 import { SimpleADPattern } from "./simple-ad";
 import { createSSMPolicy, setupFirefoxPowershell } from "../utils";
-import { RegionInfo } from "@aws-cdk/region-info";
+import { aws_ec2, aws_iam, aws_s3, Tags } from "aws-cdk-lib";
+import { RegionInfo } from "aws-cdk-lib/region-info";
 
 interface WorkstationProps {
-  vpc: ec2.IVpc;
+  vpc: aws_ec2.IVpc;
 
-  loggingBucket: s3.IBucket;
-  resourceBucket: s3.IBucket;
-  allowAccessFrom: ec2.IPeer[];
-  ssmLogBucket: s3.IBucket;
-  readonly instanceType: ec2.InstanceType;
+  loggingBucket: aws_s3.IBucket;
+  resourceBucket: aws_s3.IBucket;
+  allowAccessFrom: aws_ec2.IPeer[];
+  ssmLogBucket: aws_s3.IBucket;
+  readonly instanceType: aws_ec2.InstanceType;
   readonly activeDirectory: SimpleADPattern;
 }
 
-export class WorkstationPattern extends cdk.Construct {
-  constructor(scope: cdk.Construct, id: string, props: WorkstationProps) {
+export class WorkstationPattern extends Construct {
+  constructor(scope: Construct, id: string, props: WorkstationProps) {
     super(scope, id);
 
     // for launching from Jenkins
-    const workstationRole = new iam.Role(this, "WorkstationRole", {
-      assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
+    const workstationRole = new aws_iam.Role(this, "WorkstationRole", {
+      assumedBy: new aws_iam.ServicePrincipal("ec2.amazonaws.com"),
     });
     workstationRole.attachInlinePolicy(
       createSSMPolicy(this, props.ssmLogBucket)
     );
     workstationRole.attachInlinePolicy(
-      new iam.Policy(this, "for-nice-policy", {
+      new aws_iam.Policy(this, "for-nice-policy", {
         statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
+          new aws_iam.PolicyStatement({
+            effect: aws_iam.Effect.ALLOW,
             resources: RegionInfo.regions.map(
               (i) => `arn:aws:s3:::dcv-license.${i.name}/*`
             ),
@@ -42,10 +40,10 @@ export class WorkstationPattern extends cdk.Construct {
       })
     );
     workstationRole.attachInlinePolicy(
-      new iam.Policy(this, "for-gpu-policy", {
+      new aws_iam.Policy(this, "for-gpu-policy", {
         statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
+          new aws_iam.PolicyStatement({
+            effect: aws_iam.Effect.ALLOW,
             resources: [
               "arn:aws:s3:::nvidia-gaming/*",
               "arn:aws:s3:::nvidia-gaming",
@@ -58,35 +56,41 @@ export class WorkstationPattern extends cdk.Construct {
       })
     );
     workstationRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore")
+      aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
+        "AmazonSSMManagedInstanceCore"
+      )
     );
     workstationRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName(
+      aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
         "AmazonSSMDirectoryServiceAccess"
       )
     );
 
     props.resourceBucket.grantRead(workstationRole);
 
-    const workstationSG = new ec2.SecurityGroup(this, "WorkstationSG", {
+    const workstationSG = new aws_ec2.SecurityGroup(this, "WorkstationSG", {
       vpc: props.vpc,
       securityGroupName: "WorkstationSG",
     });
     props.allowAccessFrom.forEach((p) => {
-      workstationSG.addIngressRule(p, ec2.Port.tcp(3389), "allow RDP access");
       workstationSG.addIngressRule(
         p,
-        ec2.Port.tcp(8443),
+        aws_ec2.Port.tcp(3389),
+        "allow RDP access"
+      );
+      workstationSG.addIngressRule(
+        p,
+        aws_ec2.Port.tcp(8443),
         "allow NICE DCV access"
       );
       workstationSG.addIngressRule(
         p,
-        ec2.Port.udp(8443),
+        aws_ec2.Port.udp(8443),
         "allow NICE DCV QUIC access"
       );
     });
 
-    const userData = ec2.UserData.custom(`
+    const userData = aws_ec2.UserData.custom(`
         <powershell>
         ${setupFirefoxPowershell()}
         ${this.setupNiceDCV("Administrator")}  // for default session
@@ -94,30 +98,34 @@ export class WorkstationPattern extends cdk.Construct {
         </powershell>
         `);
 
-    const workstationTemplate = new ec2.LaunchTemplate(this, "workstation-template", {
-      launchTemplateName: "workstation-template",
-      instanceType: props.instanceType,
-      machineImage: ec2.MachineImage.latestWindows(
-        ec2.WindowsVersion.WINDOWS_SERVER_2019_JAPANESE_FULL_BASE
-      ),
-      userData,
-      role: workstationRole,
-      blockDevices: [
-        {
-          deviceName: "/dev/sda1",
-          volume: {
-            ebsDevice: {
-              volumeSize: 500,
-              volumeType: ec2.EbsDeviceVolumeType.GP3,
-            }
+    const workstationTemplate = new aws_ec2.LaunchTemplate(
+      this,
+      "workstation-template",
+      {
+        launchTemplateName: "workstation-template",
+        instanceType: props.instanceType,
+        machineImage: aws_ec2.MachineImage.latestWindows(
+          aws_ec2.WindowsVersion.WINDOWS_SERVER_2019_JAPANESE_FULL_BASE
+        ),
+        userData,
+        role: workstationRole,
+        blockDevices: [
+          {
+            deviceName: "/dev/sda1",
+            volume: {
+              ebsDevice: {
+                volumeSize: 500,
+                volumeType: aws_ec2.EbsDeviceVolumeType.GP3,
+              },
+            },
           },
-        },
-      ],
-      securityGroup: workstationSG,
-    });
-    cdk.Tags.of(workstationTemplate).add("Name", "NICE DCV");
-    cdk.Tags.of(workstationTemplate).add("Feature", "Join-AD");
-    cdk.Tags.of(workstationTemplate).add("NICE DCV AD User", "");
+        ],
+        securityGroup: workstationSG,
+      }
+    );
+    Tags.of(workstationTemplate).add("Name", "NICE DCV");
+    Tags.of(workstationTemplate).add("Feature", "Join-AD");
+    Tags.of(workstationTemplate).add("NICE DCV AD User", "");
   }
 
   setupNiceDCV(owner_name: string): string {

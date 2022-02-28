@@ -1,46 +1,48 @@
-import * as cdk from "@aws-cdk/core";
-import { Peer } from "@aws-cdk/aws-ec2";
-import { ServicePrincipal } from "@aws-cdk/aws-iam";
-import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
+import { Construct } from "constructs";
 import { createSSMPolicy } from "../../utils";
 import { BackupPattern } from "../backup";
-import * as ec2 from "@aws-cdk/aws-ec2";
-import * as iam from "@aws-cdk/aws-iam";
-import * as autoscaling from "@aws-cdk/aws-autoscaling";
-import * as s3 from "@aws-cdk/aws-s3";
+import {
+  aws_autoscaling,
+  aws_ec2,
+  aws_iam,
+  aws_s3,
+  aws_secretsmanager,
+  ScopedAws,
+  Tags,
+} from "aws-cdk-lib";
 
 export class SVNPatternProps {
-  readonly vpc: ec2.IVpc;
+  readonly vpc: aws_ec2.IVpc;
   readonly backup: BackupPattern;
-  readonly ssmLogBucket: s3.IBucket;
-  readonly allowAccessFrom: ec2.IPeer[];
-  readonly subnetType: ec2.SubnetType = ec2.SubnetType.PUBLIC;
+  readonly ssmLogBucket: aws_s3.IBucket;
+  readonly allowAccessFrom: aws_ec2.IPeer[];
+  readonly subnetType: aws_ec2.SubnetType = aws_ec2.SubnetType.PUBLIC;
 }
 
 // super simple HTTP based SVN server
-export class SVNPattern extends cdk.Construct {
-  readonly instance: ec2.Instance;
+export class SVNPattern extends Construct {
+  readonly instance: aws_ec2.Instance;
 
-  constructor(scope: cdk.Construct, id: string, props: SVNPatternProps) {
+  constructor(scope: Construct, id: string, props: SVNPatternProps) {
     super(scope, id);
 
-    const svnSecurityGroup = new ec2.SecurityGroup(this, "svn-sg", {
+    const svnSecurityGroup = new aws_ec2.SecurityGroup(this, "svn-sg", {
       vpc: props.vpc,
     });
     props.allowAccessFrom.forEach((p) =>
-      svnSecurityGroup.addIngressRule(p, ec2.Port.tcp(80))
+      svnSecurityGroup.addIngressRule(p, aws_ec2.Port.tcp(80))
     );
     svnSecurityGroup.addIngressRule(
-      Peer.ipv4(props.vpc.vpcCidrBlock),
-      ec2.Port.tcp(80)
+      aws_ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
+      aws_ec2.Port.tcp(80)
     );
 
-    const svnRole = new iam.Role(this, "svn-instance-role", {
-      assumedBy: new ServicePrincipal("ec2.amazonaws.com"),
+    const svnRole = new aws_iam.Role(this, "svn-instance-role", {
+      assumedBy: new aws_iam.ServicePrincipal("ec2.amazonaws.com"),
     });
     svnRole.attachInlinePolicy(createSSMPolicy(this, props.ssmLogBucket));
 
-    const svnSecret = new secretsmanager.Secret(this, "VCSSecret", {
+    const svnSecret = new aws_secretsmanager.Secret(this, "VCSSecret", {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({ username: "admin" }),
         generateStringKey: "password",
@@ -49,8 +51,8 @@ export class SVNPattern extends cdk.Construct {
     });
     svnSecret.grantRead(svnRole);
 
-    const { region } = new cdk.ScopedAws(this);
-    const userData = ec2.UserData.custom(`
+    const { region } = new ScopedAws(this);
+    const userData = aws_ec2.UserData.custom(`
 #!/usr/bin/env bash
 
 set -eux
@@ -83,20 +85,20 @@ sudo systemctl enable httpd
 sudo systemctl start httpd
         `);
 
-    const instanceType = ec2.InstanceType.of(
-      ec2.InstanceClass.C5,
-      ec2.InstanceSize.XLARGE
+    const instanceType = aws_ec2.InstanceType.of(
+      aws_ec2.InstanceClass.C5,
+      aws_ec2.InstanceSize.XLARGE
     );
-    const machineImage = ec2.MachineImage.latestAmazonLinux({
-      generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
+    const machineImage = aws_ec2.MachineImage.latestAmazonLinux({
+      generation: aws_ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
     });
     const ebsSetting = {
       volumeSize: 300,
-      volumeType: autoscaling.EbsDeviceVolumeType.GP3,
+      volumeType: aws_autoscaling.EbsDeviceVolumeType.GP3,
       deleteOnTermination: false, // for a sudden termination
     };
 
-    this.instance = new ec2.Instance(this, "svn-instance", {
+    this.instance = new aws_ec2.Instance(this, "svn-instance", {
       vpc: props.vpc,
       vpcSubnets: { subnetType: props.subnetType },
       securityGroup: svnSecurityGroup,
@@ -114,12 +116,12 @@ sudo systemctl start httpd
       ],
     });
 
-    cdk.Tags.of(this.instance).add(
+    Tags.of(this.instance).add(
       props.backup.BackupTagKey,
       props.backup.BackupTagValue
     );
 
-    const svnTemplate = new ec2.LaunchTemplate(this, "svn-template", {
+    const svnTemplate = new aws_ec2.LaunchTemplate(this, "svn-template", {
       launchTemplateName: "svn-template",
       instanceType,
       machineImage,
@@ -129,12 +131,15 @@ sudo systemctl start httpd
         {
           deviceName: "/dev/sda1",
           volume: {
-            ebsDevice: ebsSetting
-          }
+            ebsDevice: ebsSetting,
+          },
         },
       ],
       securityGroup: svnSecurityGroup,
     });
-    cdk.Tags.of(svnTemplate).add(props.backup.BackupTagKey, props.backup.BackupTagValue)
+    Tags.of(svnTemplate).add(
+      props.backup.BackupTagKey,
+      props.backup.BackupTagValue
+    );
   }
 }

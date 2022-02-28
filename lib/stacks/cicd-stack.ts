@@ -1,27 +1,31 @@
-import * as cdk from "@aws-cdk/core";
-import * as s3 from "@aws-cdk/aws-s3";
-import * as ec2 from "@aws-cdk/aws-ec2";
-import * as route53 from "@aws-cdk/aws-route53";
-import * as iam from "@aws-cdk/aws-iam";
+import {
+  aws_ec2,
+  aws_iam,
+  aws_route53,
+  aws_s3,
+  Stack,
+  StackProps,
+} from "aws-cdk-lib";
+import { Construct } from "constructs";
 import { JenkinsPattern } from "../constructs/jenkins";
 
-interface CICDStackProps extends cdk.StackProps {
-  vpc: ec2.IVpc;
-  zone: route53.IPrivateHostedZone;
+interface CICDStackProps extends StackProps {
+  vpc: aws_ec2.IVpc;
+  zone: aws_route53.IPrivateHostedZone;
   recordName: string;
-  backupBucket: s3.IBucket;
-  allowAccessFrom: ec2.IPeer[];
-  ssmLogBucket: s3.IBucket;
-  resourceBucket: s3.IBucket;
-  buildNodeInstanceProfile: iam.CfnInstanceProfile;
-  buildNodeSecurityGroup: ec2.ISecurityGroup;
+  backupBucket: aws_s3.IBucket;
+  allowAccessFrom: aws_ec2.IPeer[];
+  ssmLogBucket: aws_s3.IBucket;
+  resourceBucket: aws_s3.IBucket;
+  buildNodeInstanceProfile: aws_iam.CfnInstanceProfile;
+  buildNodeSecurityGroup: aws_ec2.ISecurityGroup;
 }
 
-export class CICDStack extends cdk.Stack {
+export class CICDStack extends Stack {
   readonly cicdEndpoint: string;
-  readonly jenkinsInstance: ec2.IInstance;
+  readonly jenkinsInstance: aws_ec2.IInstance;
 
-  constructor(scope: cdk.Construct, id: string, props: CICDStackProps) {
+  constructor(scope: Construct, id: string, props: CICDStackProps) {
     super(scope, id, props);
 
     const jenkins = new JenkinsPattern(this, "jenkins", {
@@ -35,10 +39,10 @@ export class CICDStack extends cdk.Stack {
     });
     this.jenkinsInstance = jenkins.instance;
 
-    new route53.ARecord(this, "jenkins-ip", {
+    new aws_route53.ARecord(this, "jenkins-ip", {
       zone: props.zone,
       recordName: props.recordName,
-      target: route53.RecordTarget.fromIpAddresses(
+      target: aws_route53.RecordTarget.fromIpAddresses(
         jenkins.instance.instancePrivateIp
       ),
     });
