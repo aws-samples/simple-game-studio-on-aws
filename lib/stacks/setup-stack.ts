@@ -3,11 +3,11 @@ import {
   aws_route53,
   aws_s3,
   aws_ssm,
+  RemovalPolicy,
   Stack,
   StackProps,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { BackupPattern } from "../constructs/backup";
 import { SimpleADPattern } from "../constructs/simple-ad";
 
 export class SetupStack extends Stack {
@@ -19,27 +19,34 @@ export class SetupStack extends Stack {
   readonly vpc: aws_ec2.IVpc;
   readonly zone: aws_route53.IPrivateHostedZone;
   readonly ad: SimpleADPattern;
-  readonly awsBackup: BackupPattern;
 
   constructor(scope: Construct, id: string, props: StackProps) {
     super(scope, id, props);
 
-    this.jenkinsBackupBucket = new aws_s3.Bucket(
-      this,
-      "jenkinsBackupBucket",
-      {}
-    );
+    this.jenkinsBackupBucket = new aws_s3.Bucket(this, "jenkinsBackupBucket", {
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
     this.gameDevOnAWSResourcesBucket = new aws_s3.Bucket(
       this,
       "GameDevOnAWSResourcesBucket",
-      {}
+      {
+        removalPolicy: RemovalPolicy.DESTROY,
+        autoDeleteObjects: true,
+      }
     );
     this.gameDevOnAWSLoggingBucket = new aws_s3.Bucket(
       this,
       "GameDevOnAWSLoggingBucket",
-      {}
+      {
+        removalPolicy: RemovalPolicy.DESTROY,
+        autoDeleteObjects: true,
+      }
     );
-    this.ssmLoggingBucket = new aws_s3.Bucket(this, "SSMLoggingBucket", {});
+    this.ssmLoggingBucket = new aws_s3.Bucket(this, "SSMLoggingBucket", {
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
 
     this.vpc = new aws_ec2.Vpc(this, "aws-game-stuio-vpc", {
       // in order to use internal DNS (private hostzone)
@@ -95,7 +102,5 @@ export class SetupStack extends Stack {
         vpc: this.vpc, // At least one VPC has to be added to a Private Hosted Zone.
       }
     );
-
-    this.awsBackup = new BackupPattern(this, "AWSBackup");
   }
 }

@@ -43,6 +43,11 @@ export class BuildNodeImageStack extends Stack {
         ],
       })
     );
+    buildInstanceRole.addManagedPolicy(
+      aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
+        "AmazonSSMManagedInstanceCore"
+      )
+    );
     this.buildNodeInstanceProfile = new aws_iam.CfnInstanceProfile(
       this,
       "BuildInstanceProfile",
@@ -67,7 +72,18 @@ export class BuildNodeImageStack extends Stack {
     });
     buildInstanceSG.addIngressRule(
       aws_ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
-      aws_ec2.Port.tcp(50000)
+      aws_ec2.Port.tcp(50000),
+      "allow Jenkins agent access"
+    );
+    buildInstanceSG.addIngressRule(
+      aws_ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
+      aws_ec2.Port.tcp(445),
+      "allow SMB access"
+    );
+    buildInstanceSG.addIngressRule(
+      aws_ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
+      aws_ec2.Port.tcp(31264),
+      "allow FastBuild access"
     );
     this.buildNodeSecurityGroup = buildInstanceSG;
   }

@@ -1,6 +1,5 @@
 import { Construct } from "constructs";
 import { createSSMPolicy } from "../../utils";
-import { BackupPattern } from "../backup";
 import {
   aws_autoscaling,
   aws_ec2,
@@ -8,12 +7,10 @@ import {
   aws_s3,
   aws_secretsmanager,
   ScopedAws,
-  Tags,
 } from "aws-cdk-lib";
 
 export class SVNPatternProps {
   readonly vpc: aws_ec2.IVpc;
-  readonly backup: BackupPattern;
   readonly ssmLogBucket: aws_s3.IBucket;
   readonly allowAccessFrom: aws_ec2.IPeer[];
   readonly subnetType: aws_ec2.SubnetType = aws_ec2.SubnetType.PUBLIC;
@@ -116,11 +113,6 @@ sudo systemctl start httpd
       ],
     });
 
-    Tags.of(this.instance).add(
-      props.backup.BackupTagKey,
-      props.backup.BackupTagValue
-    );
-
     const svnTemplate = new aws_ec2.LaunchTemplate(this, "svn-template", {
       launchTemplateName: "svn-template",
       instanceType,
@@ -137,9 +129,5 @@ sudo systemctl start httpd
       ],
       securityGroup: svnSecurityGroup,
     });
-    Tags.of(svnTemplate).add(
-      props.backup.BackupTagKey,
-      props.backup.BackupTagValue
-    );
   }
 }

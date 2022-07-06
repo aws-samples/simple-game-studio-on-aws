@@ -14,7 +14,6 @@ interface CICDStackProps extends StackProps {
   zone: aws_route53.IPrivateHostedZone;
   recordName: string;
   backupBucket: aws_s3.IBucket;
-  allowAccessFrom: aws_ec2.IPeer[];
   ssmLogBucket: aws_s3.IBucket;
   resourceBucket: aws_s3.IBucket;
   buildNodeInstanceProfile: aws_iam.CfnInstanceProfile;
@@ -30,12 +29,12 @@ export class CICDStack extends Stack {
 
     const jenkins = new JenkinsPattern(this, "jenkins", {
       vpc: props.vpc,
-      allowAccessFrom: props.allowAccessFrom,
       backupBucket: props.backupBucket,
       ssmLoggingBucket: props.ssmLogBucket,
       artifactBucket: props.resourceBucket,
       buildNodeInstanceProfile: props.buildNodeInstanceProfile,
       buildNodeSecurityGroup: props.buildNodeSecurityGroup,
+      isVanilla: !!this.node.tryGetContext("vanilla"),
     });
     this.jenkinsInstance = jenkins.instance;
 

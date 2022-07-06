@@ -39,31 +39,54 @@ Make changes to .ts files under `lib/stacks/`, modify `bin/` for your own stacks
 
 ## <a id="service-guide"></a> Service Guides
 
+### NICE-DCV (VDI) environment
+
+You can launch a virtual desktop instance in AWS easily with a EC2 Launch Temaplete feature.
+
+1. First of all, you have to create a keypair to obtain Administrator's password. Go to `EC2` -> `Key pairs`, then create a keypair, named as `windows`.
+2. Go to `EC2` -> `Launch Templates`, and select `workstation-template`.
+3. Press `Actions` -> `Launch instance from template`.
+4. Modify these following settings, then press `Launch instance`.
+  - Change `Source template version` to the latest version
+  - Change `Amazon Machine Image (AMI)` if you need. The default use vanilla Windows server.
+  - Change `Instance type` if you need.
+  - Select `windows` as `Key pair name`.
+  - Select `SetupStack/aws-game-studio-vpc/PublicSubnet1` subnet as `Network settins` -> `Subnet`.
+  - Change `EBS Volumes` if you need. The default is 300GB gp3 (SSD) EBS.
+
+After launching an instance, you have to wait for about 10 minutes.
+Then find launched instance in `EC2` -> `Instances`, select it, click `Connect`, and open `RDP client` tab.
+This shows `Public DNS` and `Password`, which can be decrypted by `windows` key pair.
+
+Download NICE-DCV client from [the official page](https://download.nice-dcv.com/) in the `NICE DCV 202x.x Client` section.
+Be careful not to download a server!
+Install it, then access to the `Public DNS`, trust it, and login as an `Administrator` and the decrypted password.
+
+That's all!
+Now you can experience the desktop environment in the cloud.
+As a side note, you Check the latency and network status in `Streaming mode` menu.
+
 ### Jenkins
 
-First of all, find a Jenkins endpoint in "EC2" -> "Instances" in AWS Console. "Name" looks like `Jenkins`.
-Select it and you can see `IPv4 Public IP` or `Public DNS (IPv4)` in the lower pane.
-You can access the given URL via a web browser.
+Jenkins is open only in the internal network (VPC).
+To access web GUI, access `http://jenkins.gamestudio.aws.internal/` via NICE-DCV VDI instances.
+Login user is `admin`, and password is also `admin` as a default settings.
+Optionally, you can open `TCP:80` to the internet by modifing the attached security group.
 
-To unlock Jenkins, you need to access the instance and obtain the password in `/var/lib/jenkins/secrets/initialAdminPassword`.
-Do we need to SSH to the instance...? --- No! All you have to do is:
+Jenkins has some example jobs.
+Explorer them to find out what we can do.
 
-1. Select the instance (As described above), and click the "Connect" button, which is located right of the blue "Launch Instance" button
-1. Choice "Session Manager", and press "Connect"
-1. Then, type the command: `sudo cat /var/lib/jenkins/secrets/initialAdminPassword`
-1. Copy the string, and paste it into the input box to unlock
+### Jenkins Jobs
 
-It's easy! As you see, by attaching appropriate policy, you can access EC2 instances without SSH key.
+If you have completed Jenkins setup, you can freely create your own Jenkins jobs. There are some samples:
 
-Then, "Install suggested plugins", and create an administrator.
-At `Instance Configuration` page, `Jenkins URL` must be `http://jenkins.gamestudio.aws.internal/` in order to connect correctly by build nodes.
-
-After that, go to "Manage Jenkins" -> "Configure Global Security", and change some settings:
-
-- "Agents" -> "TCP port for inbound agents" to `fixed: 50000`
-- "CSRF Protection" -> check "Enable proxy compatibility"
-
-Ignore "It appears that your reverse proxy set up is broken." messages on the top.
+- Backup
+    - In this CDK script, `/usr/local/backup-jenkins.sh` has been created in the Jenkins instance. This script take JENKINS_HOME snapshot as a zip file and put it on a S3 bucket. You can create a Jenkins job which runs every 6 hours to make full backup periodically. Notice that you should delete unused backups to avoid unnecessary charges. [Amazon S3 Glacier](https://aws.amazon.com/glacier/) will help to keep full backups.
+- Launch Build Instance via a Jenkins job
+    - Create a parameterized job (powered by [Parameterized Trigger](https://plugins.jenkins.io/parameterized-trigger/)) with "Build Script" (`./docs/run-instance.sh`).
+        - Create parameters (written as environment variables in the script)
+        - Some of the parameters are written in `/usr/local/env-vars-for-launching-buildnode.sh`
+    - Tips: refer `./docs/build-ue4.ps1` for detail
 
 ### Create Build Node AMI
 
@@ -122,19 +145,6 @@ Then, run an instance for a build node with the AMI (you have created the above 
 You have to connect Jenkins instance from a build node.
 Of course, you can automate it.
 Please see the sample script: `./docs/run-instance.sh`.
-
-
-### Jenkins Jobs
-
-If you have completed Jenkins setup, you can freely create your own Jenkins jobs. There are some samples:
-
-- Backup
-    - In this CDK script, `/usr/local/backup-jenkins.sh` has been created in the Jenkins instance. This script take JENKINS_HOME snapshot as a zip file and put it on a S3 bucket. You can create a Jenkins job which runs every 6 hours to make full backup periodically. Notice that you should delete unused backups to avoid unnecessary charges. [Amazon S3 Glacier](https://aws.amazon.com/glacier/) will help to keep full backups.
-- Launch Build Instance via a Jenkins job
-    - Create a parameterized job (powered by [Parameterized Trigger](https://plugins.jenkins.io/parameterized-trigger/)) with "Build Script" (`./docs/run-instance.sh`).
-        - Create parameters (written as environment variables in the script)
-        - Some of the parameters are written in `/usr/local/env-vars-for-launching-buildnode.sh`
-    - Tips: refer `./docs/build-ue4.ps1` for detail
 
 ### SimpleAD
 
