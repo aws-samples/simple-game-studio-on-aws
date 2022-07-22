@@ -1,5 +1,7 @@
 # Simple Game Studio on AWS
 
+Note: refer [hands-on doc](https://catalog.us-east-1.prod.workshops.aws/workshops/1f1e1c90-886b-47c7-a5bd-cb6fb26a3c37/ja-JP) for the detail (written only in Japanese).
+
 With this CDK application, you can easily build a simple and customizable game studio on AWS. The default setting covers a build farm, a source code repository, CI tool, workstation, and backups. If you are suffered from long build time, build farm management, slow response from CI tool, this project could help your time.
 
 ![Architecture](docs/architecture.png)
