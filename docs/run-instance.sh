@@ -17,6 +17,7 @@ EOF
 # interpolate bucket name
 cat <<EOF >> /tmp/run.py
 build_artifact_bucket = '${BUILD_ARTIFACT_BUCKET}'
+fastbuild_brokerage_host = os.environ.get('fastbuild_brokerage_host')
 EOF
 
 cat <<'EOF' >> /tmp/run.py
@@ -35,7 +36,7 @@ def run_instance(params: RunInstanceParam):
                 'DeviceName': '/dev/sda1',
                 'Ebs': {
                     'DeleteOnTermination': True,
-                    'VolumeSize': 500,
+                    'VolumeSize': 300,
                     'VolumeType': 'gp3',
                 },
             },
@@ -45,9 +46,9 @@ def run_instance(params: RunInstanceParam):
         # KeyName='',
         MaxCount=1,
         MinCount=1,
-        Placement={
-            'Tenancy': 'dedicated',  # can be changed
-        },
+        #Placement={
+        #    'Tenancy': 'dedicated',  # can be changed
+        #},
         SecurityGroupIds=[
             params.sg_id,
         ],
@@ -139,6 +140,22 @@ user_data_raw = Template('''
     [System.Environment]::SetEnvironmentVariable("PATH", $Env:Path + ";$($Env:JAVA_HOME)\bin", "User")
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
+    # install and run FastBuild
+    
+    $zipfile = "C:\\fastbuild.zip"
+    $targetPath = "C:\\fastbuild"
+    $sharedFolder = "\\\\${fastbuild_brokerage_host}\shared"
+    echo $sharedFolder
+    Invoke-WebRequest -Uri "https://fastbuild.org/downloads/v1.06/FASTBuild-Windows-x64-v1.06.zip" -OutFile $zipfile
+    Expand-Archive $zipfile -DestinationPath $targetPath
+    
+    net use $sharedFolder /user:Accounts\\fb ChangeME!
+    netsh advfirewall firewall add rule name="FASTBuild--Port 31264" dir=in action=allow protocol=TCP localport=31264
+
+    $Env:FASTBUILD_BROKERAGE_PATH = "$sharedFolder"
+    [System.Environment]::SetEnvironmentVariable("FASTBUILD_BROKERAGE_PATH","$sharedFolder")
+    & "$targetPath\FBuildWorker.exe"
+
     # setup jenkins agent
 
     Update-Last-Active-Tag
@@ -154,7 +171,10 @@ user_data_raw = Template('''
     </powershell>
     <persist>true</persist>
 ''')
-user_data = user_data_raw.safe_substitute(build_artifact_bucket=build_artifact_bucket)
+user_data = user_data_raw.safe_substitute(
+    build_artifact_bucket=build_artifact_bucket,
+    fastbuild_brokerage_host=fastbuild_brokerage_host,
+)
 
 params: RunInstanceParam = RunInstanceParam()
 params.subnet_id = os.environ.get('BN_SUBNET_ID')

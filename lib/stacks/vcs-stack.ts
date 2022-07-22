@@ -1,6 +1,5 @@
 import { Construct } from "constructs";
 import { SVNPattern } from "../constructs/vcs/svn";
-import { BackupPattern } from "../constructs/backup";
 import { P4Pattern } from "../constructs/vcs/perforce";
 import { aws_ec2, aws_route53, aws_s3, Stack, StackProps } from "aws-cdk-lib";
 
@@ -8,7 +7,6 @@ interface VCSStackProps extends StackProps {
   vpc: aws_ec2.IVpc;
   zone: aws_route53.IPrivateHostedZone;
   recordName: string;
-  backup: BackupPattern;
   allowAccessFrom: aws_ec2.IPeer[];
   ssmLogBucket: aws_s3.IBucket;
   isSVN: boolean;
@@ -24,7 +22,6 @@ export class VCSStack extends Stack {
       // SVN
       const svn = new SVNPattern(this, "svn", {
         vpc: props.vpc,
-        backup: props.backup,
 
         allowAccessFrom: props.allowAccessFrom,
         subnetType: aws_ec2.SubnetType.PUBLIC,
@@ -43,11 +40,11 @@ export class VCSStack extends Stack {
     // Perforce
     const p4 = new P4Pattern(this, "p4", {
       vpc: props.vpc,
-      backup: props.backup,
       allowAccessFrom: props.allowAccessFrom,
       subnetType: aws_ec2.SubnetType.PUBLIC,
       ssmLogBucket: props.ssmLogBucket,
       // hasReplica: true, // WIP
+      isVanilla: !!this.node.tryGetContext("vanilla"),
     });
 
     new aws_route53.ARecord(this, "p4-ip", {

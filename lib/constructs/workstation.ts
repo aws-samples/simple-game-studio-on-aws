@@ -89,11 +89,23 @@ export class WorkstationPattern extends Construct {
         "allow NICE DCV QUIC access"
       );
     });
+    // for FastBuild
+    workstationSG.addIngressRule(
+      aws_ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
+      aws_ec2.Port.tcp(445),
+      "allow SMB access"
+    );
+    workstationSG.addIngressRule(
+      aws_ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
+      aws_ec2.Port.tcp(31264),
+      "allow FastBuild access"
+    );
 
     const userData = aws_ec2.UserData.custom(`
         <powershell>
         ${setupFirefoxPowershell()}
-        ${this.setupNiceDCV("Administrator")}  // for default session
+        ${this.setupNiceDCV("Administrator")}
+        ${this.setupFastBuild()}
         ${this.downloadGPUDriver()}
         </powershell>
         `);
@@ -114,8 +126,9 @@ export class WorkstationPattern extends Construct {
             deviceName: "/dev/sda1",
             volume: {
               ebsDevice: {
-                volumeSize: 500,
+                volumeSize: 300,
                 volumeType: aws_ec2.EbsDeviceVolumeType.GP3,
+                iops: 3000,
               },
             },
           },
@@ -130,11 +143,37 @@ export class WorkstationPattern extends Construct {
 
   setupNiceDCV(owner_name: string): string {
     return `
-        $ff_url = "https://d1uj6qtbmh3dt5.cloudfront.net/2021.3/Servers/nice-dcv-server-x64-Release-2021.3-11591.msi"
+        $ff_url = "https://d1uj6qtbmh3dt5.cloudfront.net/2022.1/Servers/nice-dcv-server-x64-Release-2022.1-13067.msi"
         $wc = New-Object net.webclient
         $wc.Downloadfile($ff_url, "nice.msi")
         Start-Process -Wait -FilePath msiexec.exe -ArgumentList /i, nice.msi, /passive, /norestart, /l*v, nice_install_msi.log, ADDLOCAL=ALL, AUTOMATIC_SESSION_OWNER=${owner_name}
+
+        New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS
+        $quicpath = 'HKU:/S-1-5-18/Software/GSettings/com/nicesoftware/dcv/connectivity'
+        New-Item -Path $quicpath -EV Err -EA SilentlyContinue
+        New-ItemProperty -Path $quicpath -Name 'enable-quic-frontend' -Value 1 -PropertyType DWord -EV Err -EA SilentlyContinue
         `;
+  }
+
+  setupFastBuild(): string {
+    return `
+      New-LocalUser -Name fb -Password (ConvertTo-SecureString "ChangeME!" -AsPlainText -Force) -EV Err -EA SilentlyContinue
+
+      $zipfile = "C:\\fastbuild.zip"
+      $targetPath = "C:\\fastbuild"
+      $sharedFolder = "C:\\fb_shared"
+
+      Invoke-WebRequest -Uri "https://fastbuild.org/downloads/v1.06/FASTBuild-Windows-x64-v1.06.zip" -OutFile $zipfile
+      Expand-Archive $zipfile -DestinationPath $targetPath
+
+      New-Item $sharedFolder -ItemType Directory -ea 0
+      New-SmbShare -Name shared -Path $sharedFolder -FullAccess Everyone
+      $Env:FASTBUILD_BROKERAGE_PATH = "$sharedFolder"
+      [System.Environment]::SetEnvironmentVariable("FASTBUILD_BROKERAGE_PATH","$sharedFolder")
+
+      Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/brechtsanders/winlibs_mingw/releases/download/12.1.0-14.0.4-10.0.0-ucrt-r2/winlibs-x86_64-posix-seh-gcc-12.1.0-llvm-14.0.4-mingw-w64ucrt-10.0.0-r2.zip" -OutFile C:\\mingw.zip
+      Expand-Archive C:\\mingw.zip -DestinationPath C:\\mingw
+    `;
   }
 
   downloadGPUDriver(): string {

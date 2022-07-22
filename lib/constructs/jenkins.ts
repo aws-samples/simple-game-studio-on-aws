@@ -11,7 +11,6 @@ import { createSSMPolicy } from "../utils";
 
 export class JenkinsPatternProps {
   readonly vpc: aws_ec2.IVpc;
-  readonly allowAccessFrom: aws_ec2.IPeer[];
 
   readonly backupBucket: aws_s3.IBucket;
   readonly ssmLoggingBucket: aws_s3.IBucket;
@@ -19,6 +18,8 @@ export class JenkinsPatternProps {
 
   readonly buildNodeInstanceProfile: aws_iam.CfnInstanceProfile;
   readonly buildNodeSecurityGroup: aws_ec2.ISecurityGroup;
+
+  readonly isVanilla: boolean;
 }
 
 export class JenkinsPattern extends Construct {
@@ -31,11 +32,9 @@ export class JenkinsPattern extends Construct {
       vpc: props.vpc,
     });
 
-    props.allowAccessFrom.forEach((p) => {
-      jenkinsSecurityGroup.addIngressRule(p, aws_ec2.Port.tcp(80));
-      jenkinsSecurityGroup.addIngressRule(p, aws_ec2.Port.tcp(443));
-    });
     // for build nodes
+    // 80,443: Jenkins UI
+    // 50000: Jenkins agent
     [80, 443, 50000].forEach((port) => {
       jenkinsSecurityGroup.addIngressRule(
         aws_ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
@@ -157,7 +156,7 @@ EOF
             # environment settings for easy launching
             cat << EOF | sudo tee /usr/local/env-vars-for-launching-buildnode.sh
 #!/usr/bin/env bash
-export BN_SUBNET_ID=${props.vpc.publicSubnets[0].subnetId}
+export BN_SUBNET_ID=${props.vpc.privateSubnets[0].subnetId}
 export BN_INSTANCE_PROFILE_ARN=${props.buildNodeInstanceProfile.attrArn}
 export BN_SG_ID=${props.buildNodeSecurityGroup.securityGroupId}
 export BN_REGION=${new ScopedAws(this).region}
@@ -167,11 +166,25 @@ EOF
             sudo chown jenkins:jenkins /usr/local/env-vars-for-launching-buildnode.sh
 
             # to listen on 80 port
-            sudo sed -ie 's/^JENKINS_PORT="8080"$/JENKINS_PORT="80"/' /etc/sysconfig/jenkins
-            sudo sed -ie 's/^JENKINS_USER="jenkins"$/JENKINS_USER="root"/' /etc/sysconfig/jenkins
+            sudo sed -ie 's/JENKINS_PORT=8080/JENKINS_PORT=80/' /usr/lib/systemd/system/jenkins.service
+            sudo sed -ie 's/^User=jenkins/User=root/' /usr/lib/systemd/system/jenkins.service
+            # sudo sed -ie 's/^JENKINS_USER="jenkins"$/JENKINS_USER="root"/' /etc/sysconfig/jenkins
 
+            sudo systemctl daemon-reload
             sudo systemctl enable jenkins
             sudo systemctl start jenkins
+
+            ${
+              props.isVanilla
+                ? ""
+                : `
+              cd /tmp/
+              wget -O ./jbackup.tar.gz 'https://gametech-cfn-templates-public.s3.amazonaws.com/gdoa/jenkins_fb.tar.gz'
+              sudo tar xvf jbackup.tar.gz -C /var/lib/jenkins/
+              sudo chown -R jenkins:jenkins /var/lib/jenkins/
+              sudo systemctl restart jenkins      
+            `
+            }
         `);
     /* eslint-enable no-useless-escape */
 

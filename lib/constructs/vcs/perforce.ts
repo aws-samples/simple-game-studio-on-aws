@@ -1,17 +1,16 @@
 import * as fs from "fs";
 import * as path from "path";
 import { createSSMPolicy } from "../../utils";
-import { BackupPattern } from "../backup";
 import { Construct } from "constructs";
 import { aws_autoscaling, aws_ec2, aws_iam, aws_s3, Tags } from "aws-cdk-lib";
 
 export class P4PatternProps {
   readonly vpc: aws_ec2.IVpc;
-  readonly backup: BackupPattern;
   readonly allowAccessFrom: aws_ec2.IPeer[];
   readonly ssmLogBucket: aws_s3.IBucket;
   readonly subnetType: aws_ec2.SubnetType = aws_ec2.SubnetType.PUBLIC;
   // readonly hasReplica: boolean;  // WIP
+  readonly isVanilla: boolean;
 }
 
 export class P4Pattern extends Construct {
@@ -41,7 +40,9 @@ export class P4Pattern extends Construct {
     });
     p4Role.attachInlinePolicy(createSSMPolicy(this, props.ssmLogBucket));
 
-    const userData = aws_ec2.UserData.custom(this.createUserData());
+    const userData = aws_ec2.UserData.custom(
+      this.createUserData(props.isVanilla)
+    );
 
     const instanceType = aws_ec2.InstanceType.of(
       aws_ec2.InstanceClass.C5,
@@ -109,19 +110,25 @@ export class P4Pattern extends Construct {
       }
     );
 
-    Tags.of(p4PrimaryInstance).add(
-      props.backup.BackupTagKey,
-      props.backup.BackupTagValue
-    );
     Tags.of(p4PrimaryInstance).add("Name", "PerforcePrimary");
 
     this.primaryInstance = p4PrimaryInstance;
   }
 
-  createUserData(): string {
-    return fs.readFileSync(
-      path.join(__dirname, "perforce-primary-userdata.sh"),
-      "utf8"
-    );
+  createUserData(isVanilla: boolean): string {
+    return `
+      ${fs.readFileSync(
+        path.join(__dirname, "perforce-primary-userdata.sh"),
+        "utf8"
+      )}
+      ${
+        isVanilla
+          ? ""
+          : fs.readFileSync(
+              path.join(__dirname, "perforce-primary-add-sample-userdata.sh"),
+              "utf8"
+            )
+      }    
+    `;
   }
 }
